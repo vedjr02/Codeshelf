@@ -101,7 +101,7 @@ export default function SettingsPage() {
       <div className="p-5 sm:p-10 max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-10 animate-rise">
-            <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
+            <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
               <Settings className="w-4 h-4" />
               Configuration
             </span>

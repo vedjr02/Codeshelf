@@ -141,7 +141,7 @@ export default function ImportPage() {
 
           {/* Header */}
           <div className="mb-10 animate-rise">
-            <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#30d158]/80 flex items-center gap-1.5 mb-3">
+            <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
               <Scan className="w-4 h-4" />
               Import
             </span>
@@ -218,7 +218,7 @@ export default function ImportPage() {
                     onClick={handleImport}
                     disabled={selectedPaths.size === 0 || isImporting}
                     size="sm"
-                    className="rounded-full gap-1.5 bg-[#30d158] hover:bg-[#40e368] text-white disabled:opacity-50 shadow-[0_4px_20px_-4px_rgba(48,209,88,0.5)]"
+                    className="rounded-full gap-1.5 bg-[#30d158] hover:bg-[#40e368] text-white disabled:opacity-50"
                   >
                     <Sparkles className="w-4 h-4" />
                     Import ({selectedPaths.size})

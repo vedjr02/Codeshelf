@@ -205,7 +205,7 @@ export default function LoginPage() {
           <h2 className="text-[34px] font-semibold tracking-tight leading-[1.15] mb-4">
             Every project.
             <br />
-            <span className="text-gradient">One shelf.</span>
+            One shelf.
           </h2>
           <p className="text-[15px] text-[#9a9aa3] leading-relaxed mb-12">
             Discover, organize, and protect the projects scattered across your

@@ -204,7 +204,7 @@ function ProjectsContent() {
           {/* Header */}
           <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
-              <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
+              <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
                 <Layers className="w-4 h-4" />
                 Project Library
               </span>

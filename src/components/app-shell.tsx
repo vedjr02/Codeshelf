@@ -6,12 +6,32 @@ import { CommandPalette } from '@/components/command-palette';
 import type { SessionUser } from '@/lib/session';
 import { useToast } from '@/components/ui/toast';
 import { Menu, FolderGit2, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { success } = useToast();
+
+  // Restore sidebar collapse preference
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      if (localStorage.getItem('codeshelf:sidebar-collapsed') === '1') {
+        setCollapsed(true);
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('codeshelf:sidebar-collapsed', next ? '1' : '0');
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,9 +73,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <CommandPalette />
-      {/* Desktop sidebar — fixed, inside the shell's padded gutter */}
-      <div className="hidden md:block pl-72">
-        <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} />
+      {/* Desktop sidebar — fixed; content column carries the matching offset */}
+      <div className="hidden md:block">
+        <Sidebar
+          user={user}
+          authResolved={authResolved}
+          onLogout={handleLogout}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+        />
       </div>
 
       {/* Mobile drawer */}
@@ -66,13 +92,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in-right">
-            <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} onNavigate={() => setMobileOpen(false)} />
+            <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} collapsed={false} onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       )}
 
-      {/* Main column */}
-      <div className="md:pl-0">
+      {/* Main column — offset matches the sidebar width (fixes overlap) */}
+      <div className={cn('transition-[padding] duration-200', collapsed ? 'md:pl-[76px]' : 'md:pl-72')}>
         {/* Mobile topbar */}
         <div className="sticky top-0 z-40 md:hidden flex items-center gap-3 h-14 px-4 bg-[#101014]/85 backdrop-blur-xl border-b border-white/[0.08]">
           <button

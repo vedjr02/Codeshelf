@@ -256,13 +256,13 @@ export default function DashboardPage() {
           <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5">
+                <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45">
                   <Sparkles className="w-4 h-4" />
                   {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </span>
               </div>
               <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
-                Welcome to <span className="text-gradient">CodeShelf</span>
+                Welcome to CodeShelf
               </h1>
               <p className="text-[16px] text-[#9a9aa3]">Your shelf is empty — let&apos;s fill it.</p>
             </div>
@@ -351,13 +351,13 @@ export default function DashboardPage() {
           <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5">
+                <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45">
                   <Sparkles className="w-4 h-4" />
                   {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </span>
               </div>
               <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
-                {greeting}, <span className="text-gradient">Developer</span>
+                {greeting}, Developer
               </h1>
               <p className="text-[16px] text-[#9a9aa3]">
                 Your project library at a glance

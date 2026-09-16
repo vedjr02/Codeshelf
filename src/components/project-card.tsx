@@ -51,18 +51,8 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
   const hasBackup = project.backups && project.backups.length > 0;
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 hover:-translate-y-[2px] hover:bg-white/[0.06] bg-white/[0.06] border-white/[0.13] hover:border-white/[0.18] hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]">
-      {/* Top accent — language-colored hairline */}
-      <div
-        className="absolute inset-x-0 top-0 h-[2px] opacity-70 transition-all duration-300"
-        style={{
-          background: project.language
-            ? `linear-gradient(90deg, transparent, ${languageColor}, transparent)`
-            : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-        }}
-      />
-
-      <div className="flex flex-col p-6 min-h-[210px]">
+    <Card className="group relative overflow-hidden transition-all duration-200 hover:bg-white/[0.075] bg-white/[0.06] border-white/[0.13] hover:border-white/[0.19]">
+      <div className="flex flex-col p-6 min-h-[200px]">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2.5">

@@ -149,7 +149,7 @@ export default function BackupsPage() {
       <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
         {/* Header */}
         <div className="mb-10 animate-rise">
-          <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#30d158]/80 flex items-center gap-1.5 mb-3">
+          <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
             <Archive className="w-4 h-4" />
             Protection
           </span>

@@ -267,7 +267,7 @@ function ProjectDetailContent() {
                 onClick={handleCreateBackup}
                 disabled={isBackingUp}
                 size="lg"
-                className="shrink-0 gap-2 rounded-full px-6 bg-[#30d158] text-white hover:bg-[#40e368] disabled:opacity-50 shadow-[0_4px_20px_-4px_rgba(48,209,88,0.5)]"
+                className="shrink-0 gap-2 rounded-full px-6 bg-[#30d158] text-white hover:bg-[#40e368] disabled:opacity-50"
               >
                 <FolderSync className="w-[18px] h-[18px]" />
                 {isBackingUp ? 'Backing up...' : 'Create Backup'}

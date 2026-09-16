@@ -9,11 +9,12 @@ import {
   Settings,
   Plus,
   Search,
-  ShieldCheck,
   ChevronRight,
   LogOut,
   Loader2,
   Archive,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -27,6 +28,8 @@ export interface SidebarProps {
   onLogout?: () => void;
   isLoggingOut?: boolean;
   onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 const navSections = [
@@ -57,7 +60,15 @@ interface DashboardTicker {
   projectsNeedingBackup: number;
 }
 
-export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate }: SidebarProps) {
+export function Sidebar({
+  user,
+  authResolved,
+  onLogout,
+  isLoggingOut,
+  onNavigate,
+  collapsed = false,
+  onToggleCollapsed,
+}: SidebarProps) {
   const pathname = usePathname();
   const [ticker, setTicker] = useState<DashboardTicker | null>(null);
 
@@ -79,50 +90,80 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
     : user?.email?.[0]?.toUpperCase();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-72 bg-[#15151b]/90 backdrop-blur-2xl saturate-150 border-r border-white/[0.13] flex flex-col z-20">
+    <aside
+      className={cn(
+        'fixed left-0 top-0 h-screen bg-[#15151b]/90 backdrop-blur-2xl saturate-150 border-r border-white/[0.1] flex flex-col z-30 transition-[width] duration-200',
+        collapsed ? 'w-[76px]' : 'w-72'
+      )}
+    >
       {/* Logo */}
-      <div className="px-6 pt-7 pb-6">
-        <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
-          <div className="relative">
-            <div className="w-11 h-11 rounded-[14px] bg-white/[0.08] border border-white/10 flex items-center justify-center group-hover:bg-white/[0.12] transition-colors duration-200">
+      <div className={cn('pt-6 pb-5', collapsed ? 'px-3' : 'px-6')}>
+        <div className="flex items-center gap-3">
+          <Link href="/" onClick={onNavigate} className="shrink-0" title="Dashboard">
+            <div className="w-10 h-10 rounded-[12px] bg-white/[0.08] border border-white/10 flex items-center justify-center hover:bg-white/[0.12] transition-colors">
               <FolderGit2 className="w-5 h-5 text-[#2997ff]" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#30d158] border-2 border-[#101014]" />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-[17px] font-semibold tracking-tight">CodeShelf</span>
-            <span className="text-[12px] text-[#9a9aa3] mt-0.5">Project Library</span>
-          </div>
-        </Link>
+          </Link>
+          {!collapsed && (
+            <div className="flex flex-col leading-tight min-w-0 animate-fade">
+              <span className="text-[16px] font-semibold tracking-tight truncate">CodeShelf</span>
+              <span className="text-[11.5px] text-[#9a9aa3] truncate">Project Library</span>
+            </div>
+          )}
+          {!collapsed && (
+            <button
+              onClick={onToggleCollapsed}
+              title="Collapse sidebar"
+              className="ml-auto w-8 h-8 rounded-[9px] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors shrink-0"
+            >
+              <PanelLeftClose className="w-[17px] h-[17px]" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Search — opens the ⌘K command palette */}
-      <div className="px-4 mb-5">
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
-          className="relative group w-full text-left"
-        >
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9aa3] group-hover:text-[#2997ff] transition-colors" />
-            <div className="h-11 pl-10 pr-12 rounded-[12px] bg-white/[0.06] border border-white/[0.13] flex items-center text-[14px] text-white/35 group-hover:bg-white/[0.09] group-hover:border-white/[0.16] transition-colors">
-              Search projects
+      {/* Search / expand button */}
+      <div className={cn('mb-4', collapsed ? 'px-3' : 'px-4')}>
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
+            title="Search (⌘K)"
+            className="w-full h-10 rounded-[11px] bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-[#9a9aa3] hover:bg-white/[0.1] hover:text-white transition-colors"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
+            className="relative group w-full text-left"
+          >
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9aa3] group-hover:text-[#2997ff] transition-colors" />
+              <div className="h-10 pl-10 pr-12 rounded-[11px] bg-white/[0.06] border border-white/[0.1] flex items-center text-[13.5px] text-white/40 group-hover:bg-white/[0.09] group-hover:border-white/[0.16] transition-colors">
+                Search projects
+              </div>
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10.5px] text-[#9a9aa3] border border-white/12 rounded-md px-1.5 py-0.5 font-sans hidden sm:block">
+                ⌘K
+              </kbd>
             </div>
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#9a9aa3] border border-white/10 rounded-md px-1.5 py-0.5 font-sans hidden sm:block">
-              ⌘K
-            </kbd>
-          </div>
-        </button>
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto no-scrollbar px-3">
+      <nav className={cn('flex-1 overflow-y-auto overflow-x-hidden no-scrollbar', collapsed ? 'px-3' : 'px-3')}>
         {navSections.map((section) => (
-          <div key={section.label} className="mb-6">
-            <div className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9a9aa3]">
-              {section.label}
-            </div>
-            <div className="space-y-1">
+          <div key={section.label} className="mb-5">
+            {!collapsed ? (
+              <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-white/35">
+                {section.label}
+              </div>
+            ) : (
+              <div className="mx-3 mb-2 hairline" />
+            )}
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
                 const Icon = item.icon;
@@ -131,25 +172,24 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
+                    title={collapsed ? item.label : undefined}
                     className={cn(
-                      'group flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[14px] font-medium transition-all duration-200 relative',
+                      'group flex items-center rounded-[11px] text-[13.5px] font-medium transition-all duration-150 relative',
+                      collapsed ? 'justify-center h-10' : 'gap-3 px-3 py-2',
                       isActive
-                        ? 'text-white bg-white/[0.08]'
-                        : 'text-[#9a9aa3] hover:text-white hover:bg-white/[0.05]'
+                        ? 'text-white bg-white/[0.1]'
+                        : 'text-[#9a9aa3] hover:text-white hover:bg-white/[0.06]'
                     )}
                   >
                     <Icon
                       className={cn(
-                        'w-[18px] h-[18px] relative transition-colors',
+                        'w-[17px] h-[17px] shrink-0 transition-colors',
                         isActive ? 'text-[#2997ff]' : 'text-[#9a9aa3] group-hover:text-white'
                       )}
                     />
-                    <span className="relative">{item.label}</span>
+                    {!collapsed && <span>{item.label}</span>}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-[#2997ff]" />
-                    )}
-                    {isActive && (
-                      <ChevronRight className="w-3.5 h-3.5 text-white/40 ml-auto relative" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-r-full bg-[#2997ff]" />
                     )}
                   </Link>
                 );
@@ -160,83 +200,103 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
 
         {/* Import CTA */}
         <div className="pt-1">
-          <Link
-            href="/import"
-            onClick={onNavigate}
-            className="group flex items-center gap-2.5 px-3.5 py-3 rounded-[12px] text-[14px] font-semibold text-white bg-[#0a84ff] hover:bg-[#2997ff] transition-colors shadow-[0_2px_16px_-2px_rgba(10,132,255,0.4)]"
-          >
-            <Plus className="w-4 h-4" />
-            Import Project
-            <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
+          {collapsed ? (
+            <Link
+              href="/import"
+              onClick={onNavigate}
+              title="Import Project"
+              className="w-full h-10 rounded-[11px] bg-[#0a84ff] hover:bg-[#2997ff] flex items-center justify-center text-white transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </Link>
+          ) : (
+            <Link
+              href="/import"
+              onClick={onNavigate}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-[11px] text-[13.5px] font-semibold text-white bg-[#0a84ff] hover:bg-[#2997ff] transition-colors"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              Import Project
+              <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          )}
         </div>
       </nav>
 
       {/* Footer */}
-      <div className="px-4 pb-6 pt-4 border-t border-white/[0.11]">
-        {/* Backup health — real data, links to /backups */}
-        {ticker && (
+      <div className={cn('pb-5 pt-3 border-t border-white/[0.08]', collapsed ? 'px-3' : 'px-4')}>
+        {/* Backup health */}
+        {ticker && !collapsed && (
           <Link
             href="/backups"
             onClick={onNavigate}
-            className="block rounded-[14px] bg-white/[0.06] border border-white/[0.11] p-3.5 mb-3 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all group"
+            className="block rounded-[12px] bg-white/[0.05] border border-white/[0.09] p-3 mb-2.5 hover:bg-white/[0.075] hover:border-white/[0.15] transition-all group"
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-[10px] bg-[#30d158]/10 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-4 h-4 text-[#30d158]" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-[9px] bg-[#30d158]/12 flex items-center justify-center shrink-0">
+                <Archive className="w-3.5 h-3.5 text-[#30d158]" />
               </div>
               <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-[13px] font-semibold text-white/80">
-                  {ticker.projectsNeedingBackup === 0 ? 'Library Protected' : `${ticker.projectsNeedingBackup} need backup`}
+                <span className="text-[12px] font-medium text-white/85">
+                  {ticker.projectsNeedingBackup === 0 ? 'Library protected' : `${ticker.projectsNeedingBackup} need backup`}
                 </span>
-                <span className="text-[11px] text-[#9a9aa3] group-hover:text-white/50 transition-colors">
+                <span className="text-[10.5px] text-[#9a9aa3]">
                   {ticker.totalProjects} {ticker.totalProjects === 1 ? 'project' : 'projects'} · view backups
                 </span>
               </div>
             </div>
-            {ticker.projectsNeedingBackup > 0 && (
-              <div className="h-1 rounded-full bg-white/[0.07] overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-[#ff9f0a] transition-all duration-700"
-                  style={{
-                    width: `${Math.min(100, (ticker.projectsNeedingBackup / Math.max(1, ticker.totalProjects)) * 100)}%`,
-                  }}
-                />
-              </div>
-            )}
           </Link>
         )}
 
         {/* User block */}
-        <div className="rounded-[14px] bg-white/[0.06] border border-white/[0.11] p-3 flex items-center gap-3">
+        <div
+          className={cn(
+            'rounded-[12px] bg-white/[0.05] border border-white/[0.09] flex items-center',
+            collapsed ? 'justify-center p-2' : 'p-2.5 gap-2.5'
+          )}
+        >
           {authResolved && user ? (
             <>
-              <div className="w-9 h-9 rounded-full bg-[#2997ff]/15 border border-[#2997ff]/25 flex items-center justify-center text-[12.5px] font-semibold text-[#2997ff] shrink-0">
+              <div
+                className={cn(
+                  'rounded-full bg-[#2997ff]/15 border border-[#2997ff]/25 flex items-center justify-center text-[11px] font-semibold text-[#2997ff] shrink-0',
+                  collapsed ? 'w-8 h-8' : 'w-8 h-8'
+                )}
+                title={collapsed ? user.email : undefined}
+              >
                 {initials || '?'}
               </div>
-              <div className="flex-1 min-w-0 leading-tight">
-                <p className="text-[13px] font-medium truncate">{user.name || user.email.split('@')[0]}</p>
-                <p className="text-[11px] text-[#9a9aa3] truncate">{user.email}</p>
-              </div>
-              <button
-                onClick={onLogout}
-                disabled={isLoggingOut}
-                title="Sign out"
-                className="w-8 h-8 rounded-[9px] flex items-center justify-center text-white/40 hover:text-[#ff453a] hover:bg-[#ff453a]/10 transition-colors shrink-0 disabled:opacity-50"
-              >
-                {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-              </button>
+              {!collapsed && (
+                <>
+                  <div className="flex-1 min-w-0 leading-tight">
+                    <p className="text-[12.5px] font-medium truncate">{user.name || user.email.split('@')[0]}</p>
+                    <p className="text-[10.5px] text-[#9a9aa3] truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={onLogout}
+                    disabled={isLoggingOut}
+                    title="Sign out"
+                    className="w-7 h-7 rounded-[8px] flex items-center justify-center text-white/40 hover:text-[#ff453a] hover:bg-[#ff453a]/10 transition-colors shrink-0 disabled:opacity-50"
+                  >
+                    {isLoggingOut ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                  </button>
+                </>
+              )}
             </>
           ) : (
-            <div className="flex items-center gap-3 w-full">
-              <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse-soft shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-2.5 w-20 rounded bg-white/[0.08]" />
-                <div className="h-2 w-28 rounded bg-white/[0.05]" />
-              </div>
-            </div>
+            <div className={cn('animate-pulse-soft rounded-full bg-white/[0.08]', collapsed ? 'w-8 h-8' : 'w-8 h-8')} />
           )}
         </div>
+
+        {collapsed && (
+          <button
+            onClick={onToggleCollapsed}
+            title="Expand sidebar"
+            className="w-full h-9 mt-2 rounded-[11px] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors"
+          >
+            <PanelLeftOpen className="w-[17px] h-[17px]" />
+          </button>
+        )}
       </div>
     </aside>
   );
