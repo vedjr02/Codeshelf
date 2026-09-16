@@ -13,12 +13,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Settings, Cloud, Shield, CheckCircle } from 'lucide-react';
+import {
+  Settings,
+  Cloud,
+  Shield,
+  Palette,
+  Bell,
+  FolderSync,
+  HardDrive,
+  Info,
+  CheckCircle,
+} from 'lucide-react';
 
 export default function SettingsPage() {
   const [backupPath, setBackupPath] = useState('/tmp/codeshelf-backups');
   const [defaultProvider, setDefaultProvider] = useState('local');
   const [autoBackup, setAutoBackup] = useState(false);
+  const [notifications, setNotifications] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -35,62 +46,160 @@ export default function SettingsPage() {
       <Sidebar />
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-3xl mx-auto">
-          <div className="flex items-center gap-2 mb-1">
-            <Settings className="w-5 h-5 text-violet-400" />
-            <h1 className="text-[28px] font-semibold tracking-tight leading-none">Settings</h1>
+          {/* Header */}
+          <div className="mb-8 animate-rise">
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-400/80 flex items-center gap-1.5 mb-2">
+              <Settings className="w-3.5 h-3.5" />
+              Configuration
+            </span>
+            <h1 className="text-[28px] font-semibold tracking-tight leading-none mb-1">
+              Settings
+            </h1>
+            <p className="text-[13px] text-white/40 mt-1">
+              Configure backup storage, preferences, and app behavior
+            </p>
           </div>
-          <p className="text-[13px] text-zinc-500 mt-1 mb-8">Configure backup storage, preferences, and app behavior</p>
 
-          <div className="space-y-5">
-            <Card className="p-5 bg-zinc-900/80 border-zinc-800">
+          <div className="space-y-5 stagger">
+            {/* Backup Settings */}
+            <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
               <div className="flex items-center gap-2.5 mb-5">
-                <Cloud className="w-4 h-4 text-sky-400" />
+                <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                  <Cloud className="w-4 h-4 text-sky-400" />
+                </div>
                 <div>
-                  <h3 className="text-[14px] font-semibold">Backup Storage</h3>
-                  <p className="text-[11.5px] text-zinc-500">Configure where project backups are stored</p>
+                  <h3 className="text-[14px] font-semibold tracking-tight">Backup Storage</h3>
+                  <p className="text-[11.5px] text-white/35">Configure where project backups are stored</p>
                 </div>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-[12px] text-zinc-500 mb-1.5 block">Default Backup Location</label>
+                  <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Default Backup Location</label>
                   <Input
                     value={backupPath}
                     onChange={(e) => setBackupPath(e.target.value)}
-                    className="bg-zinc-900 border-zinc-800 text-[13px] font-mono"
+                    placeholder="/path/to/backups"
+                    className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px] font-mono"
                   />
+                  <p className="text-[11px] text-white/30 mt-1.5">Local directory where project backups will be stored</p>
                 </div>
+
                 <div>
-                  <label className="text-[12px] text-zinc-500 mb-1.5 block">Storage Provider</label>
+                  <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Storage Provider</label>
                   <Select value={defaultProvider} onValueChange={setDefaultProvider}>
-                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-[13px]">
+                    <SelectTrigger className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-950 border-zinc-800">
-                      <SelectItem value="local">Local Storage</SelectItem>
-                      <SelectItem value="google-drive" disabled>Google Drive (Coming Soon)</SelectItem>
-                      <SelectItem value="s3" disabled>Amazon S3 (Coming Soon)</SelectItem>
+                    <SelectContent className="bg-[#141416] border-white/10">
+                      <SelectItem value="local">
+                        <span className="flex items-center gap-2">
+                          <HardDrive className="w-3.5 h-3.5 text-white/40" />
+                          Local Storage
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="google-drive" disabled>
+                        <span className="flex items-center gap-2 text-white/30">
+                          Google Drive (Coming Soon)
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="s3" disabled>
+                        <span className="flex items-center gap-2 text-white/30">
+                          Amazon S3 (Coming Soon)
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center justify-between py-3 border-t border-zinc-800">
-                  <Shield className="w-4 h-4 text-emerald-400" />
-                  <div>
-                    <p className="text-[13px] font-medium">Auto Backup</p>
-                    <p className="text-[11.5px] text-zinc-500">Automatically backup projects weekly</p>
+
+                <div className="flex items-center justify-between py-3 border-t border-white/[0.05]">
+                  <div className="flex items-center gap-3">
+                    <FolderSync className="w-4 h-4 text-white/30" />
+                    <div>
+                      <p className="text-[13px] font-medium">Auto Backup</p>
+                      <p className="text-[11.5px] text-white/35">Automatically backup projects weekly</p>
+                    </div>
                   </div>
                   <Switch checked={autoBackup} onCheckedChange={setAutoBackup} />
                 </div>
               </div>
             </Card>
 
-            <div className="flex justify-end">
+            {/* Preferences */}
+            <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Palette className="w-4 h-4 text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold tracking-tight">Preferences</h3>
+                  <p className="text-[11.5px] text-white/35">Customize app behavior and appearance</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
+                  <div className="flex items-center gap-3">
+                    <Bell className="w-4 h-4 text-white/30" />
+                    <div>
+                      <p className="text-[13px] font-medium">Desktop Notifications</p>
+                      <p className="text-[11.5px] text-white/35">Get notified when backups complete</p>
+                    </div>
+                  </div>
+                  <Switch checked={notifications} onCheckedChange={setNotifications} />
+                </div>
+
+                <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-4 h-4 text-white/30" />
+                    <div>
+                      <p className="text-[13px] font-medium">Exclude Patterns</p>
+                      <p className="text-[11.5px] text-white/35">Default patterns to exclude from backups</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="rounded-xl text-[12.5px]">
+                    Edit
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* About */}
+            <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Info className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold tracking-tight">About</h3>
+                  <p className="text-[11.5px] text-white/35">App version and system info</p>
+                </div>
+              </div>
+              <div className="space-y-0">
+                {[
+                  { k: 'Version', v: '1.0.0' },
+                  { k: 'Database', v: 'PostgreSQL' },
+                  { k: 'Framework', v: 'Next.js 16' },
+                  { k: 'Runtime', v: 'Node.js' },
+                ].map(({ k, v }) => (
+                  <div key={k} className="flex justify-between py-2.5 border-b border-white/[0.05] last:border-0">
+                    <span className="text-[12.5px] text-white/40">{k}</span>
+                    <span className="text-[12.5px] font-medium">{v}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Save */}
+            <div className="flex justify-end animate-rise" style={{ animationDelay: '0.3s' }}>
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="gap-1.5"
+                className="rounded-xl gap-1.5 bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80 hover:from-violet-500/80 hover:to-fuchsia-500/80 text-white shadow-lg shadow-violet-900/40 disabled:opacity-50"
               >
                 {saved ? (
-                  <><CheckCircle className="w-4 h-4" /> Saved</>
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Saved
+                  </>
                 ) : isSaving ? (
                   'Saving...'
                 ) : (
