@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { AppShell } from '@/components/app-shell';
 import { ToastProvider } from '@/components/ui/toast';
 
 export const metadata: Metadata = {
@@ -24,9 +23,7 @@ export default function RootLayout({
           <div className="absolute -top-40 -right-40 h-[26rem] w-[26rem] rounded-full bg-white/[0.03] blur-[110px]" />
         </div>
 
-        <ToastProvider>
-          <AppShell>{children}</AppShell>
-        </ToastProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );
