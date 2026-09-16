@@ -16,9 +16,7 @@ import {
   Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import type { SessionUser } from '@/lib/session';
 
 export type { SessionUser } from '@/lib/session';
@@ -61,8 +59,6 @@ interface DashboardTicker {
 
 export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
   const [ticker, setTicker] = useState<DashboardTicker | null>(null);
 
   useEffect(() => {
@@ -71,14 +67,6 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
       .then((d) => d && setTicker(d))
       .catch(() => {});
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/projects?search=${encodeURIComponent(searchQuery)}`);
-      onNavigate?.();
-    }
-  };
 
   const initials = user?.name
     ? user.name
@@ -108,23 +96,23 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
         </Link>
       </div>
 
-      {/* Search */}
+      {/* Search — opens the ⌘K command palette */}
       <div className="px-4 mb-5">
-        <form onSubmit={handleSearch}>
-          <div className="relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b] group-focus-within:text-[#2997ff] transition-colors" />
-            <Input
-              type="text"
-              placeholder="Search projects"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11 text-[14px] rounded-[12px] bg-white/[0.06] border-white/[0.1] focus:ring-[#2997ff]/30 hover:bg-white/[0.09] transition-colors"
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#86868b] border border-white/10 rounded-md px-1.5 py-0.5 pointer-events-none font-sans hidden sm:block">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
+          className="relative group w-full text-left"
+        >
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b] group-hover:text-[#2997ff] transition-colors" />
+            <div className="h-11 pl-10 pr-12 rounded-[12px] bg-white/[0.06] border border-white/[0.1] flex items-center text-[14px] text-white/35 group-hover:bg-white/[0.09] group-hover:border-white/[0.16] transition-colors">
+              Search projects
+            </div>
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#86868b] border border-white/10 rounded-md px-1.5 py-0.5 font-sans hidden sm:block">
               ⌘K
             </kbd>
           </div>
-        </form>
+        </button>
       </div>
 
       {/* Navigation */}

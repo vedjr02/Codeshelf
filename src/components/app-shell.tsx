@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '@/components/sidebar';
+import { CommandPalette } from '@/components/command-palette';
 import type { SessionUser } from '@/lib/session';
 import { useToast } from '@/components/ui/toast';
-import { Menu, LogOut, Loader2, FolderGit2 } from 'lucide-react';
+import { Menu, LogOut, Loader2, FolderGit2, Search } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -50,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
+      <CommandPalette />
       {/* Desktop sidebar — fixed, inside the shell's padded gutter */}
       <div className="hidden md:block pl-72">
         <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} isLoggingOut={isLoggingOut} />
@@ -85,6 +87,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-[15px] font-semibold tracking-tight">CodeShelf</span>
           </div>
+          <button
+            onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
+            className="ml-auto w-9 h-9 rounded-[10px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
+            aria-label="Search"
+          >
+            <Search className="w-[18px] h-[18px]" />
+          </button>
         </div>
 
         {children}
