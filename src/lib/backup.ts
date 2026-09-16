@@ -45,17 +45,16 @@ export async function createBackup(options: BackupOptions): Promise<{ size: numb
   // Ensure output directory exists
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
-  // Legacy archiver factory API
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const archiver = require('archiver');
-  const archive = archiver('zip', { zlib: { level: 6 } });
-
   const output = createWriteStream(outputPath);
 
   return new Promise((resolve, reject) => {
     let fileCount = 0;
     let total = 0;
     let resolved = false;
+
+    // archiver v8 is ESM-only and exports classes, not a callable factory
+    const { ZipArchive } = require('archiver');
+    const archive = new ZipArchive({ zlib: { level: 6 } });
 
     archive.on('entry', (entry: any) => {
       fileCount++;
@@ -89,12 +88,14 @@ export async function createBackup(options: BackupOptions): Promise<{ size: numb
       }
     });
 
+    // Count the glob matches once so progress has a denominator
     archive.on('progress', (data: any) => {
       if (data.entries && data.entries.total) {
         total = data.entries.total;
       }
     });
 
+    // Add files with exclusions
     try {
       archive.glob('**/*', {
         cwd: projectPath,

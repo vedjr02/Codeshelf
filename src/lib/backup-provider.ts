@@ -57,15 +57,14 @@ export class LocalBackupProvider implements BackupProvider {
     // Ensure directory exists
     await fs.mkdir(path.dirname(destinationPath), { recursive: true });
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const archiver = require('archiver');
-    const archive = archiver('zip', { zlib: { level: 6 } });
-
-    const output = createWriteStream(destinationPath);
-
-    let fileCount = 0;
-
     return new Promise((resolve, reject) => {
+      const output = createWriteStream(destinationPath);
+      // archiver v8 is ESM-only and exports classes, not a callable factory
+      const { ZipArchive } = require('archiver');
+      const archive = new ZipArchive({ zlib: { level: 6 } });
+
+      let fileCount = 0;
+
       output.on('close', () => {
         resolve({ size: archive.pointer(), fileCount });
       });
@@ -81,6 +80,7 @@ export class LocalBackupProvider implements BackupProvider {
 
       archive.pipe(output);
 
+      // Add files with exclusions
       archive.glob('**/*', {
         cwd: sourcePath,
         ignore: DEFAULT_EXCLUDE_PATTERNS,
@@ -134,8 +134,10 @@ export function getBackupProvider(type: string, config?: Record<string, any>): B
     case 'local':
       return new LocalBackupProvider(config?.basePath);
     case 'google-drive':
+      // Future: return new GoogleDriveProvider(config);
       throw new Error('Google Drive provider not yet implemented');
     case 's3':
+      // Future: return new S3Provider(config);
       throw new Error('S3 provider not yet implemented');
     default:
       return new LocalBackupProvider();
