@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Sidebar } from '@/components/sidebar';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -204,31 +203,25 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <LoadingState message="Loading dashboard..." />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingState message="Loading dashboard..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <EmptyState
-            icon={<AlertTriangle className="h-8 w-8 text-[#ff453a]" />}
-            title="Failed to load dashboard"
-            description={error}
-            action={
-              <Button onClick={fetchStats} variant="secondary">
-                Try again
-              </Button>
-            }
-          />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <EmptyState
+          icon={<AlertTriangle className="h-8 w-8 text-[#ff453a]" />}
+          title="Failed to load dashboard"
+          description={error}
+          action={
+            <Button onClick={fetchStats} variant="secondary">
+              Try again
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -244,10 +237,8 @@ export default function DashboardPage() {
   const greeting = hour < 6 ? 'Working late' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-10 py-10">
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
           {/* Header */}
           <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
@@ -551,6 +542,5 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </div>
   );
 }

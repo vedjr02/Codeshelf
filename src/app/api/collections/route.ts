@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const DEFAULT_USER_ID = 'dev-user-id';
+import { getSessionUser } from '@/lib/session';
 
 // GET /api/collections - List all collections
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const collections = await prisma.collection.findMany({
-      where: { userId: DEFAULT_USER_ID },
+      where: { userId: user.id },
       include: {
         _count: {
           select: { projects: true },
@@ -35,16 +39,21 @@ export async function GET() {
 // POST /api/collections - Create collection
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { name, description, icon = 'folder', color = '#6366f1' } = await request.json();
 
-    if (!name) {
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
     const collection = await prisma.collection.create({
       data: {
-        userId: DEFAULT_USER_ID,
-        name,
+        userId: user.id,
+        name: name.trim(),
         description,
         icon,
         color,

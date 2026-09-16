@@ -142,6 +142,38 @@
 .stagger > *:nth-child(9) { animation-delay: 0.32s; }
 .stagger > *:nth-child(10) { animation-delay: 0.36s; }
 
+/* Mobile drawer slide */
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Toast entrance */
+.animate-toast-in {
+  animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Language dot glow */
 .lang-dot {
   box-shadow: 0 0 8px -2px currentColor;

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useParams } from 'next/navigation';
-import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -172,30 +171,24 @@ function ProjectDetailContent() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <LoadingState message="Loading project details..." />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingState message="Loading project details..." />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <EmptyState
-            title="Project not found"
-            description="The requested project could not be found."
-            action={
-              <Link href="/projects">
-                <Button variant="secondary" className="rounded-xl">Back to Projects</Button>
-              </Link>
-            }
-          />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <EmptyState
+          title="Project not found"
+          description="The requested project could not be found."
+          action={
+            <Link href="/projects">
+              <Button variant="secondary" className="rounded-xl">Back to Projects</Button>
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -203,10 +196,8 @@ function ProjectDetailContent() {
   const languageColor = getLanguageColor(project.language);
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-10 py-10">
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
           {/* Back */}
           <Link
             href="/projects"
@@ -468,7 +459,6 @@ function ProjectDetailContent() {
           </Tabs>
         </div>
       </div>
-    </div>
   );
 }
 

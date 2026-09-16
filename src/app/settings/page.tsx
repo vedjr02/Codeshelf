@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Sidebar } from '@/components/sidebar';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -23,7 +22,15 @@ import {
   HardDrive,
   Info,
   CheckCircle,
+  AlertTriangle,
 } from 'lucide-react';
+
+interface SettingsData {
+  backupPath: string;
+  defaultProvider: string;
+  autoBackup: boolean;
+  notifications: boolean;
+}
 
 export default function SettingsPage() {
   const [backupPath, setBackupPath] = useState('/tmp/codeshelf-backups');
@@ -32,20 +39,63 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (!res.ok) throw new Error('Failed to load settings');
+      const data: SettingsData = await res.json();
+      setBackupPath(data.backupPath || '/tmp/codeshelf-backups');
+      setDefaultProvider(data.defaultProvider || 'local');
+      setAutoBackup(data.autoBackup ?? false);
+      setNotifications(data.notifications ?? true);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load settings');
+    } finally {
+      setInitialLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleSave = async () => {
+    if (autoBackup && !backupPath.trim()) {
+      setLoadError('A backup location is required when auto backup is enabled');
+      return;
+    }
     setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 500));
-    setIsSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setLoadError(null);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backupPath: backupPath.trim(), defaultProvider, autoBackup, notifications }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save settings');
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  if (!initialLoaded) {
+    return <div className="min-h-screen" />;
+  }
+
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-10 max-w-5xl mx-auto">
+    <div className="min-h-screen">
+      <div className="p-5 sm:p-10 max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-10 animate-rise">
             <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
@@ -59,6 +109,13 @@ export default function SettingsPage() {
               Configure backup storage, preferences, and app behavior
             </p>
           </div>
+
+          {loadError && (
+            <div className="flex items-start gap-2.5 text-[13px] text-[#ff6961] bg-[#ff453a]/[0.08] border border-[#ff453a]/20 p-3.5 rounded-[12px] mb-6 animate-fade">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              {loadError}
+            </div>
+          )}
 
           <div className="space-y-7 stagger">
             {/* Backup Settings */}
@@ -192,7 +249,7 @@ export default function SettingsPage() {
             <div className="flex justify-end animate-rise" style={{ animationDelay: '0.3s' }}>
               <Button
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || saved}
                 className="rounded-full gap-1.5 px-7 disabled:opacity-50"
               >
                 {saved ? (
@@ -210,6 +267,5 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </div>
   );
 }

@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AppShell } from '@/components/app-shell';
+import { ToastProvider } from '@/components/ui/toast';
 
 export const metadata: Metadata = {
   title: 'CodeShelf',
-  description: 'Your personal developer project library & cloud backup',
+  description: 'Your personal developer project library & local backup manager',
 };
 
 export default function RootLayout({
@@ -22,9 +24,9 @@ export default function RootLayout({
           <div className="absolute -top-40 -right-40 h-[26rem] w-[26rem] rounded-full bg-white/[0.03] blur-[110px]" />
         </div>
 
-        <main className="pl-72 relative z-10 min-h-screen">
-          {children}
-        </main>
+        <ToastProvider>
+          <AppShell>{children}</AppShell>
+        </ToastProvider>
       </body>
     </html>
   );

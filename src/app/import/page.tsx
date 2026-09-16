@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -94,34 +93,43 @@ export default function ImportPage() {
   const handleImport = async () => {
     if (selectedPaths.size === 0) return;
 
-    try {
-      setIsImporting(true);
-      const pathsToImport = Array.from(selectedPaths);
-      let completed = 0;
+    setIsImporting(true);
+    setError(null);
+    setImportProgress(0);
+    const pathsToImport = Array.from(selectedPaths);
+    const failed: string[] = [];
 
-      for (const path of pathsToImport) {
-        await fetch('/api/projects', {
+    for (let i = 0; i < pathsToImport.length; i++) {
+      const path = pathsToImport[i];
+      try {
+        const res = await fetch('/api/projects', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectPath: path }),
         });
-
-        completed++;
-        setImportProgress(Math.round((completed / pathsToImport.length) * 100));
+        if (!res.ok) failed.push(path.split('/').pop() || path);
+      } catch {
+        failed.push(path.split('/').pop() || path);
       }
-
-      router.push('/projects');
-    } catch {
-      setError('Failed to import some projects');
-      setIsImporting(false);
+      setImportProgress(Math.round(((i + 1) / pathsToImport.length) * 100));
     }
+
+    if (failed.length === 0) {
+      router.push('/projects');
+      return;
+    }
+
+    setError(
+      failed.length === 1
+        ? `Failed to import "${failed[0]}". It may already be in your library.`
+        : `Failed to import ${failed.length} projects: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`
+    );
+    setIsImporting(false);
   };
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-10 max-w-7xl mx-auto">
+    <div className="min-h-screen">
+      <div className="p-5 sm:p-10 max-w-7xl mx-auto">
           {/* Back */}
           <Link
             href="/projects"
@@ -294,6 +302,5 @@ export default function ImportPage() {
           ) : null}
         </div>
       </div>
-    </div>
   );
 }

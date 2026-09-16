@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { detectProject } from '@/lib/project-detector';
 import { hashString } from '@/lib/utils';
+import { getSessionUser } from '@/lib/session';
 import * as path from 'path';
-
-// Helper for temporary user ID in dev mode (auth will be added)
-const DEFAULT_USER_ID = 'dev-user-id';
 
 // GET /api/projects - List projects with filtering and sorting
 export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const language = searchParams.get('language');
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     const where: any = {
-      userId: DEFAULT_USER_ID,
+      userId: user.id,
     };
 
     if (search) {
@@ -107,6 +110,11 @@ export async function GET(request: NextRequest) {
 // POST /api/projects - Add a new project by path
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { projectPath, collectionIds = [], tagIds = [] } = await request.json();
 
     if (!projectPath) {
@@ -124,18 +132,6 @@ export async function POST(request: NextRequest) {
     const structureHash = await hashString(
       `${detected.language}-${detected.framework}-${detected.dependencies.map(d => d.name).sort().join(',')}`
     );
-
-    // Create or find default user (dev mode)
-    let user = await prisma.user.findFirst();
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          id: DEFAULT_USER_ID,
-          email: 'dev@codeshelf.app',
-          name: 'Developer',
-        },
-      });
-    }
 
     // Create project
     const project = await prisma.project.create({

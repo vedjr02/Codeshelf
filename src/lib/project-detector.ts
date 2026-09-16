@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execSync } from 'child_process';
 
-interface DetectionResult {
+export interface DetectionResult {
   name: string;
   language: string | null;
   framework: string | null;

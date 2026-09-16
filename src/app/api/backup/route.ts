@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { createBackup, deleteBackup, ensureBackupDirectory } from '@/lib/backup';
-
-const DEFAULT_USER_ID = 'dev-user-id';
+import { createBackup, deleteBackup, ensureBackupDirectory, restoreBackup } from '@/lib/backup';
+import { getSessionUser } from '@/lib/session';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 // GET /api/backup - List backups for a project or all backups
 export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
 
-    const where: Prisma.BackupWhereInput = { userId: DEFAULT_USER_ID };
+    const where: Prisma.BackupWhereInput = { userId: user.id };
     if (projectId) where.projectId = projectId;
 
     const backups = await prisma.backup.findMany({
@@ -39,6 +45,11 @@ export async function GET(request: NextRequest) {
 // POST /api/backup - Create a new backup
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { projectId } = await request.json();
 
     if (!projectId) {
@@ -49,7 +60,7 @@ export async function POST(request: NextRequest) {
       where: { id: projectId },
     });
 
-    if (!project) {
+    if (!project || project.userId !== user.id) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -61,7 +72,7 @@ export async function POST(request: NextRequest) {
     const backup = await prisma.backup.create({
       data: {
         projectId,
-        userId: DEFAULT_USER_ID,
+        userId: user.id,
         provider: 'local',
         storagePath: `${basePath}/${project.id}-${Date.now()}.zip`,
         status: 'pending',
@@ -133,9 +144,61 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT /api/backup - Restore a backup to a chosen destination directory
+export async function PUT(request: NextRequest) {
+  try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { backupId, destination } = await request.json();
+
+    if (!backupId || !destination || typeof destination !== 'string') {
+      return NextResponse.json({ error: 'Backup ID and destination are required' }, { status: 400 });
+    }
+
+    const backup = await prisma.backup.findUnique({
+      where: { id: backupId },
+      include: { project: { select: { name: true } } },
+    });
+
+    if (!backup || backup.userId !== user.id) {
+      return NextResponse.json({ error: 'Backup not found' }, { status: 404 });
+    }
+
+    if (backup.status !== 'completed') {
+      return NextResponse.json({ error: 'Only completed backups can be restored' }, { status: 400 });
+    }
+
+    // Destination must exist and be a directory
+    try {
+      const destStat = await fs.stat(destination);
+      if (!destStat.isDirectory()) {
+        return NextResponse.json({ error: 'Destination is not a directory' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Destination directory does not exist' }, { status: 400 });
+    }
+
+    const restoreDir = path.join(destination, `${backup.project.name}-restored-${Date.now()}`);
+    await restoreBackup({ backupPath: backup.storagePath, outputPath: restoreDir });
+
+    return NextResponse.json({ success: true, path: restoreDir });
+  } catch (error) {
+    console.error('Failed to restore backup:', error);
+    return NextResponse.json({ error: 'Failed to restore backup' }, { status: 500 });
+  }
+}
+
 // DELETE /api/backup - Delete a backup
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const backupId = searchParams.get('backupId');
 
@@ -147,7 +210,7 @@ export async function DELETE(request: NextRequest) {
       where: { id: backupId },
     });
 
-    if (!backup) {
+    if (!backup || backup.userId !== user.id) {
       return NextResponse.json({ error: 'Backup not found' }, { status: 404 });
     }
 

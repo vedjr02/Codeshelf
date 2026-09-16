@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Sidebar } from '@/components/sidebar';
 import { ProjectCard } from '@/components/project-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, Star, Archive, FolderGit2, Layers } from 'lucide-react';
+import { Search, Plus, Star, Archive, FolderGit2, Layers, X, Hash, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 interface Project {
@@ -48,14 +47,21 @@ export default function ProjectsPage() {
 function ProjectsContent() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
+  const initialCollectionId = searchParams.get('collectionId') || '';
+  const initialTagId = searchParams.get('tagId') || '';
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialSearch);
   const [language, setLanguage] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('lastModified');
   const [filterFavorite, setFilterFavorite] = useState(false);
   const [filterArchived, setFilterArchived] = useState(false);
+  const [collectionId, setCollectionId] = useState<string>(initialCollectionId);
+  const [tagId, setTagId] = useState<string>(initialTagId);
+  const [collectionName, setCollectionName] = useState<string | null>(null);
+  const [tagName, setTagName] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -66,17 +72,20 @@ function ProjectsContent() {
       if (sortBy) params.set('sortBy', sortBy);
       if (filterFavorite) params.set('isFavorite', 'true');
       if (filterArchived) params.set('isArchived', 'true');
+      if (collectionId) params.set('collectionId', collectionId);
+      if (tagId) params.set('tagId', tagId);
 
       const res = await fetch(`/api/projects?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch projects');
       const data = await res.json();
       setProjects(data);
+      setError(null);
     } catch (error) {
-      console.error('Failed to load projects:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load projects');
     } finally {
       setLoading(false);
     }
-  }, [search, language, sortBy, filterFavorite, filterArchived]);
+  }, [search, language, sortBy, filterFavorite, filterArchived, collectionId, tagId]);
 
   useEffect(() => {
     fetchProjects();
@@ -144,11 +153,46 @@ function ProjectsContent() {
     new Set(projects.map((p) => p.language).filter(Boolean) as string[])
   );
 
+  // Resolve collection/tag names for the active filter banner
+  useEffect(() => {
+    let cancelled = false;
+    if (collectionId) {
+      fetch('/api/collections')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((cols: Array<{ id: string; name: string }>) => {
+          if (!cancelled) setCollectionName(cols.find((c) => c.id === collectionId)?.name || 'Collection');
+        })
+        .catch(() => {});
+    } else {
+      setCollectionName(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (tagId) {
+      fetch('/api/tags')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((tags: Array<{ id: string; name: string }>) => {
+          if (!cancelled) setTagName(tags.find((t) => t.id === tagId)?.name || 'Tag');
+        })
+        .catch(() => {});
+    } else {
+      setTagName(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [tagId]);
+
+  const hasActiveContextFilters = Boolean(collectionId || tagId);
+
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-10 py-10">
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
           {/* Header */}
           <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
@@ -170,6 +214,33 @@ function ProjectsContent() {
               </Button>
             </Link>
           </div>
+
+          {/* Active collection/tag context banner */}
+          {hasActiveContextFilters && (
+            <div className="flex items-center gap-2.5 mb-5 animate-fade">
+              <span className="text-[13px] text-[#86868b]">Filtered by</span>
+              {collectionName && (
+                <button
+                  onClick={() => setCollectionId('')}
+                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2997ff]/12 border border-[#2997ff]/25 text-[12.5px] font-medium text-[#2997ff] hover:bg-[#2997ff]/20 transition-colors"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  {collectionName}
+                  <X className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
+                </button>
+              )}
+              {tagName && (
+                <button
+                  onClick={() => setTagId('')}
+                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff9f0a]/12 border border-[#ff9f0a]/25 text-[12.5px] font-medium text-[#ff9f0a] hover:bg-[#ff9f0a]/20 transition-colors"
+                >
+                  <Hash className="w-3.5 h-3.5" />
+                  {tagName}
+                  <X className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Filters & Search */}
           <div className="flex flex-wrap items-center gap-3 mb-8 animate-rise" style={{ animationDelay: '0.05s' }}>
@@ -238,6 +309,16 @@ function ProjectsContent() {
           {/* Projects Grid */}
           {loading ? (
             <LoadingState message="Loading projects..." />
+          ) : error ? (
+            <EmptyState
+              icon={<AlertTriangle className="h-8 w-8 text-[#ff453a]" />}
+              title="Failed to load projects"
+              description={error}
+              action={
+                <Button variant="secondary" onClick={fetchProjects}>Try again</Button>
+              }
+              className="py-16"
+            />
           ) : projects.length === 0 ? (
             <EmptyState
               icon={<FolderGit2 className="h-8 w-8 text-white/30" />}
@@ -272,6 +353,5 @@ function ProjectsContent() {
           )}
         </div>
       </div>
-    </div>
   );
 }

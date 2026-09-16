@@ -1,14 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const DEFAULT_USER_ID = 'dev-user-id';
+import { getSessionUser } from '@/lib/session';
 
 // GET /api/dashboard - Get dashboard statistics
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Get all projects for the user
     const projects = await prisma.project.findMany({
-      where: { userId: DEFAULT_USER_ID },
+      where: { userId: user.id },
       include: {
         tags: { include: { tag: true } },
         backups: { orderBy: { createdAt: 'desc' }, take: 1 },

@@ -11,11 +11,25 @@ import {
   Search,
   ShieldCheck,
   ChevronRight,
+  LogOut,
+  Loader2,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import type { SessionUser } from '@/lib/session';
+
+export type { SessionUser } from '@/lib/session';
+
+export interface SidebarProps {
+  user: SessionUser | null;
+  authResolved?: boolean;
+  onLogout?: () => void;
+  isLoggingOut?: boolean;
+  onNavigate?: () => void;
+}
 
 const navSections = [
   {
@@ -23,6 +37,7 @@ const navSections = [
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/projects', label: 'Projects', icon: FolderGit2 },
+      { href: '/backups', label: 'Backups', icon: Archive },
     ],
   },
   {
@@ -44,7 +59,7 @@ interface DashboardTicker {
   projectsNeedingBackup: number;
 }
 
-export function Sidebar() {
+export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,14 +76,25 @@ export function Sidebar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/projects?search=${encodeURIComponent(searchQuery)}`);
+      onNavigate?.();
     }
   };
+
+  const initials = user?.name
+    ? user.name
+        .split(/\s+/)
+        .map((p) => p[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : user?.email?.[0]?.toUpperCase();
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-72 bg-black/70 backdrop-blur-2xl saturate-150 border-r border-white/[0.08] flex flex-col z-20">
       {/* Logo */}
       <div className="px-6 pt-7 pb-6">
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
           <div className="relative">
             <div className="w-11 h-11 rounded-[14px] bg-white/[0.08] border border-white/10 flex items-center justify-center group-hover:bg-white/[0.12] transition-colors duration-200">
               <FolderGit2 className="w-5 h-5 text-[#2997ff]" />
@@ -110,12 +136,13 @@ export function Sidebar() {
             </div>
             <div className="space-y-1">
               {section.items.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={cn(
                       'group flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[14px] font-medium transition-all duration-200 relative',
                       isActive
@@ -147,6 +174,7 @@ export function Sidebar() {
         <div className="pt-1">
           <Link
             href="/import"
+            onClick={onNavigate}
             className="group flex items-center gap-2.5 px-3.5 py-3 rounded-[12px] text-[14px] font-semibold text-white bg-[#0a84ff] hover:bg-[#2997ff] transition-colors shadow-[0_2px_16px_-2px_rgba(10,132,255,0.4)]"
           >
             <Plus className="w-4 h-4" />
@@ -158,25 +186,66 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 pb-6 pt-4 border-t border-white/[0.08]">
-        <div className="rounded-[14px] bg-white/[0.04] border border-white/[0.08] p-3.5">
-          <div className="flex items-center gap-3 mb-2.5">
-            <div className="w-8 h-8 rounded-[10px] bg-[#30d158]/10 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-[#30d158]" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-[13px] font-semibold text-white/80">Library Protected</span>
-              <span className="text-[11px] text-[#86868b] font-mono">v1.0.0</span>
-            </div>
-          </div>
-          {ticker && (
-            <div className="flex items-center justify-between text-[11px] text-[#86868b]">
-              <span>{ticker.totalProjects} projects</span>
-              {ticker.projectsNeedingBackup > 0 && (
-                <span className="text-[#ff9f0a] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] animate-pulse-soft" />
-                  {ticker.projectsNeedingBackup} need backup
+        {/* Backup health — real data, links to /backups */}
+        {ticker && (
+          <Link
+            href="/backups"
+            onClick={onNavigate}
+            className="block rounded-[14px] bg-white/[0.04] border border-white/[0.08] p-3.5 mb-3 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all group"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-[10px] bg-[#30d158]/10 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4 text-[#30d158]" />
+              </div>
+              <div className="flex flex-col leading-tight min-w-0">
+                <span className="text-[13px] font-semibold text-white/80">
+                  {ticker.projectsNeedingBackup === 0 ? 'Library Protected' : `${ticker.projectsNeedingBackup} need backup`}
                 </span>
-              )}
+                <span className="text-[11px] text-[#86868b] group-hover:text-white/50 transition-colors">
+                  {ticker.totalProjects} {ticker.totalProjects === 1 ? 'project' : 'projects'} · view backups
+                </span>
+              </div>
+            </div>
+            {ticker.projectsNeedingBackup > 0 && (
+              <div className="h-1 rounded-full bg-white/[0.07] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#ff9f0a] transition-all duration-700"
+                  style={{
+                    width: `${Math.min(100, (ticker.projectsNeedingBackup / Math.max(1, ticker.totalProjects)) * 100)}%`,
+                  }}
+                />
+              </div>
+            )}
+          </Link>
+        )}
+
+        {/* User block */}
+        <div className="rounded-[14px] bg-white/[0.04] border border-white/[0.08] p-3 flex items-center gap-3">
+          {authResolved && user ? (
+            <>
+              <div className="w-9 h-9 rounded-full bg-[#2997ff]/15 border border-[#2997ff]/25 flex items-center justify-center text-[12.5px] font-semibold text-[#2997ff] shrink-0">
+                {initials || '?'}
+              </div>
+              <div className="flex-1 min-w-0 leading-tight">
+                <p className="text-[13px] font-medium truncate">{user.name || user.email.split('@')[0]}</p>
+                <p className="text-[11px] text-[#86868b] truncate">{user.email}</p>
+              </div>
+              <button
+                onClick={onLogout}
+                disabled={isLoggingOut}
+                title="Sign out"
+                className="w-8 h-8 rounded-[9px] flex items-center justify-center text-white/40 hover:text-[#ff453a] hover:bg-[#ff453a]/10 transition-colors shrink-0 disabled:opacity-50"
+              >
+                {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3 w-full">
+              <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse-soft shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-2.5 w-20 rounded bg-white/[0.08]" />
+                <div className="h-2 w-28 rounded bg-white/[0.05]" />
+              </div>
             </div>
           )}
         </div>

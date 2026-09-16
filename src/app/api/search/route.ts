@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseSearchQuery } from '@/lib/utils';
-
-const DEFAULT_USER_ID = 'dev-user-id';
+import { getSessionUser } from '@/lib/session';
 
 // GET /api/search - Smart global search across projects
 export async function GET(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const rawQuery = searchParams.get('q') || '';
 
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Build the query
     const where: any = {
-      userId: DEFAULT_USER_ID,
+      userId: user.id,
       isArchived: false,
     };
 

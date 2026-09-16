@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -115,20 +114,15 @@ export default function CollectionsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <LoadingState message="Loading collections and tags..." />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingState message="Loading collections and tags..." />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-10 max-w-7xl mx-auto">
+    <div className="min-h-screen">
+      <div className="p-5 sm:p-10 max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-10 animate-rise">
             <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
@@ -296,6 +290,5 @@ export default function CollectionsPage() {
           </div>
         </div>
       </div>
-    </div>
   );
 }

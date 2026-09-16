@@ -1,12 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectProject } from '@/lib/project-detector';
-import type { DetectedProject } from '@/lib/project-detector';
+import { getSessionUser } from '@/lib/session';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+interface ScanResult {
+  path: string;
+  name: string;
+  language: string | null;
+  framework: string | null;
+  packageManager: string | null;
+  isGitRepo: boolean;
+  gitRemote: string | null;
+  size: number;
+  readme: string | null;
+  dependencies: Array<{ name: string; version: string; type: string }>;
+  devDependencies: Array<{ name: string; version: string; type: string }>;
+  scripts: Array<{ name: string; command: string }>;
+}
 
 // POST /api/import/scan - Scan a folder for projects
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { folderPath, recursive = true, maxDepth = 3 } = await request.json();
 
     if (!folderPath) {
@@ -24,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find all potential projects
-    const foundProjects: DetectedProject[] = [];
+    const foundProjects: ScanResult[] = [];
 
     async function scanDirectory(dirPath: string, currentDepth: number): Promise<void> {
       if (currentDepth > maxDepth) return;
@@ -52,10 +72,23 @@ export async function POST(request: NextRequest) {
         const hasGit = entries.some(entry => entry.name === '.git' && entry.isDirectory());
 
         if (hasProjectIndicator || hasGit) {
-          // Detect project details
+          // Detect project details, trimmed to what the import UI needs
           const detected = await detectProject(dirPath);
           if (detected) {
-            foundProjects.push(detected);
+            foundProjects.push({
+              path: dirPath,
+              name: detected.name,
+              language: detected.language,
+              framework: detected.framework,
+              packageManager: detected.packageManager,
+              isGitRepo: detected.isGitRepo,
+              gitRemote: detected.gitRemote,
+              size: detected.size,
+              readme: detected.readme,
+              dependencies: detected.dependencies,
+              devDependencies: detected.devDependencies,
+              scripts: detected.scripts,
+            });
           }
         }
 
