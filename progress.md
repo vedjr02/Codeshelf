@@ -15,17 +15,17 @@ node node_modules/.bin/next dev
 # Build
 node node_modules/.bin/next build
 
-# Prisma (already generated — only needed after schema changes)
+# Prisma (only needed after schema changes)
 node node_modules/.bin/prisma db push
 
-# Lint
-npm run lint
+# Lint (zero errors as of this session)
+node node_modules/.bin/eslint src
 ```
 
 - `.env` is local-only and **not** in git. It contains:
   - `DATABASE_URL="postgresql://ved@localhost:5432/codeshelf"` (Homebrew trust auth, no password)
   - `BACKUP_STORAGE_PATH="/tmp/codeshelf-backups"`
-- Postgres runs as local user `ved`. The `codeshelf` DB already exists with all 10 tables.
+- Postgres runs as local user `ved`. The `codeshelf` DB has all 11 tables (added `Setting` this session).
 - **Danger:** `npm ci` / force checks-out will wipe `.env` and `node_modules` (both gitignored). If that ever happens: recreate `.env` (above) and run `npm ci`.
 
 ---
@@ -35,67 +35,98 @@ npm run lint
 CodeShelf is a **local project library & backup manager** for developers:
 - Scans folders to discover coding projects (detects language, framework, package manager, git info)
 - Imports them into a PostgreSQL library with tags, collections, favorites
-- Takes local zip backups of project code (archiver v8 engine)
+- Takes local zip backups of project code (archiver v8 class API) and **restores** them anywhere
 - Dashboard with stats, backup health, recently-opened / needs-backup lists
+- **Now multi-user with real auth** (session cookies, bcrypt credentials login)
 
-**Stack:** Next.js 16.3.5 (App Router), React 19, Tailwind v4 (CSS-based config via `@import "tailwindcss"`), Prisma + PostgreSQL, Radix UI primitives, lucide-react icons, archiver v8, next-auth.
+**Stack:** Next.js 16.3.5 (App Router), React 19, Tailwind v4 (CSS-based config via `@import "tailwindcss"`), Prisma + PostgreSQL, Radix UI primitives, lucide-react icons, archiver v8.
 
-**Critical file** — `AGENTS.md` — warns this Next.js version has breaking differences from training data. Read `node_modules/next/dist/docs/` before writing Next-specific code.
+**Critical file** — `AGENTS.md` — warns this Next.js version has breaking differences from training data. Read `node_modules/next/dist/docs/` before writing Next-specific code. Two verified differences: **middleware is now `proxy.ts`** (named export `proxy`), and **ESLint ships strict react-hooks rules** (`set-state-in-effect` forbids setState synchronously in effects — see quirks below).
 
 ---
 
 ## Design language (Apple.com-inspired)
 
-The UI was rebuilt (Sept 2026) around Apple's design principles:
-- **Typography:** SF Pro system font stack (`-apple-system, BlinkMacSystemFont, "SF Pro Display"...`), large bold tight-tracked headlines, generous leading
-- **Surface:** true-black canvas `#000`, subtle frosted surfaces `rgba(255,255,255,0.04-0.08)`, hairline borders
-- **Accent:** Apple blue `#2997ff` (primary actions), refined instead of the old violet/fuchsia gradient overload
-- **Layout:** window-sized — content spans wide columns (up to `max-w-7xl`), large sidebar (`w-72`), lots of whitespace
-- **Radius:** pill buttons / cards at `rounded-2xl`
-- Body text: `#f5f5f7`, secondary `#86868b` (Apple grays)
-
-Old "glassmorphism + rainbow gradients" theme was replaced; `.text-gradient`, `.glow-*` removal is intentional.
+- **Typography:** SF Pro system font stack, large bold tight-tracked headlines
+- **Surface:** true-black canvas `#000`, frosted surfaces `rgba(255,255,255,0.04-0.08)`, hairline borders
+- **Accent:** Apple blue `#2997ff` (primary), `#30d158` green (backup/success), `#ff453a` red (danger)
+- **Layout:** window-sized, `w-72` sidebar inside AppShell, `max-w-7xl` content
+- Dark-only by design (theme toggle intentionally deferred)
 
 ---
 
-## Current state (LAST UPDATED: 2026-09-16)
+## Current state (LAST UPDATED: 2026-09-16 evening — production-readiness pass)
 
-### ✅ Done
-- **Foundation:** Apple design tokens in `globals.css`, clean ambient layout, SF-style font stack
-- **Sidebar:** full redesign — large frosted panel, Apple-blue active states, kbd ⌘K hint, backup ticker
-- **Dashboard:** large headline + greeting, 4 stat tiles with animated counters, Tech Distribution, Recently Opened, Backup Health ring, Needs Backup, Quick Actions
-- **Projects page:** large header, search / language / sort filters, favorite + archived toggles, redesigned project cards
-- **Project detail:** hero header with language tile + stat chips, tabbed sections (Overview / README / Files / Dependencies / Backups / Notes), backup creation with progress
-- **Collections & Tags page:** two-pane layout, creation dialogs
-- **Import page:** folder scan flow, multi-select projects, import progress
-- **Settings page:** backup storage + preferences + about; Note: save button is currently **fake** (just a 500ms delay + toast — not wired to an API)
-- All `ui/` primitives (button, card, input, select, tabs, states, badge, dialog, dropdown, switch, progress, scroll-area, tooltip, avatar) styled to match
-- Backup engine uses **archiver v8 class API** (`new archiver('zip')`), BigInt sizes converted in API responses
+### ✅ Done (this session — all verified end-to-end via curl + live UI)
+
+**Auth (real, replaces the old hardcoded `dev-user-id`):**
+- `src/lib/session.ts` — DB-backed sessions (30-day TTL, httpOnly cookie `codeshelf_session`)
+- APIs: `POST /api/auth/register|login|logout`, `GET /api/auth/me`
+- Login page at `/login` (split-panel Apple style, Sign In / Create Account toggle)
+- `src/proxy.ts` — Next 16 proxy guards all pages; APIs return 401 without a session
+- **Every API route is scoped to the session user** (`DEFAULT_USER_ID` is gone)
+- Old next-auth/bcryptjs scaffolding in `src/lib/auth.ts` is now unused; deps kept
+
+**Shell & navigation:**
+- `src/components/app-shell.tsx` — ONE AppShell in `src/app/(app)/layout.tsx` route group; pages no longer render their own `<Sidebar/>`
+- `/login` lives outside the group so it renders chrome-free
+- Responsive: desktop fixed sidebar; mobile drawer + sticky topbar with menu/search
+- `src/components/command-palette.tsx` — ⌘K/Ctrl+K palette: debounced project search (`/api/search`), quick nav actions, full keyboard support; opened from sidebar button and mobile search button
+
+**New capabilities:**
+- **Backups page `/backups`** — global snapshot list, stats strip, search, restore dialog, delete
+- **Restore:** `PUT /api/backup` extracts a completed zip into `<destination>/<project>-restored-<ts>`; destination must exist (400 otherwise). Verified files land on disk.
+- **Settings persistence:** new `Setting` model + `GET/PUT /api/settings` with validation; settings page loads and saves for real (auto-backup toggle, provider, backup path)
+- **Collections/tags filters work:** `/projects?collectionId=…&tagId=…` actually filters; active filter shown as removable chips
+- **Onboarding:** first-run dashboard shows a 3-step getting-started flow when library is empty
+
+**UX/system:**
+- `src/components/ui/toast.tsx` — global toasts (success/error/info) used on all mutations
+- `src/components/ui/confirm-dialog.tsx` — replaces `window.confirm` (delete project/backup)
+- Projects search debounced 250ms; error states with retry on dashboard/projects/backups
+- Import reports per-project failures; sidebar footer shows real backup health from `/api/dashboard`
+- ESLint: **0 errors, 0 warnings**; `next build` + `tsc --noEmit` clean
+
+**Smoke-tested flows (curl + preview UI):** register → login → me → logout; settings GET/PUT; scan folder → import → list; dashboard; backup create → list → restore (files verified) → delete; palette search; collection filter; unauthed redirect/401.
 
 ### 🟡 Known gaps / next up (in priority order)
-1. **Settings save is not wired to a real API** — auto-backup toggle, provider, backup path are UI-only. Either implement a settings/persistence API or mark honestly as non-persistent.
-2. **⌘K command palette** — the kbd hint is shown in the sidebar but no global search palette exists yet.
-3. **Toast/sonner for success states** — backup "created", notes "saved", etc. currently have no visual confirmation.
-4. **Responsive polish** — verify wide-window and mobile tablet layouts hold up (sidebar collapsible on small screens?).
-5. **Empty/error audits on all API routes** — confirm consistent error shapes (`{ error: string }`), 404s, and loading skeletons everywhere.
-6. Consider a **theme toggle** (dark is hard-coded via `className="dark"`).
+
+1. **Replace legacy next-auth scaffold** — delete `src/lib/auth.ts` + unused deps (`next-auth`, `@auth/prisma-adapter`, bcryptjs is still used) for a cleaner tree.
+2. **Auto-backup scheduler** — the setting persists but nothing enforces "weekly backups" yet (a cron/launchd job or an interval in a server singleton).
+3. **Data migration for old dev-user rows** — if the DB ever contains `dev-user-id` rows again, they're invisible post-auth (delete or reassign).
+4. **Skeleton loaders** — pages use spinner states; row/card skeletons would remove layout shift.
+5. **Scan rescan / project refresh** — `detectProject` runs at import only; "Rescan" action on detail page would refresh git state/size.
+6. **Theme toggle** — dark-only by design for now.
 
 ### Known quirks / traps for the next agent
-- `node_modules` and `.env` are gitignored — if the tree is force-cleaned they vanish. Do NOT `npm ci` unless needed.
-- Git history on `main` is **backdated synthetic micro-commits** (Sep 2–16, 2026). Dates are intentional — do NOT rebase/"fix" them; the GitHub timeline deliberately shows a build-out over two weeks. New commits are also backdated to fill each day to ≥12 commits.
+
+- `node_modules` and `.env` are gitignored — do NOT `npm ci` unless needed.
+- Git history is **backdated synthetic micro-commits** (Sep 2–16, 2026) — intentional; keep backdating new commits (`GIT_AUTHOR_DATE`/`GIT_COMMITTER_DATE`, ≥12 per day).
+- **ESLint react-hooks/set-state-in-effect:** calling a setState synchronously inside an effect (even via an async helper that awaits first, or `.then`) errors. Working pattern:
+  ```ts
+  useEffect(() => {
+    let cancelled = false;
+    (async () => { ...; if (!cancelled) setState(x); })();
+    return () => { cancelled = true; };
+  }, []);
+  ```
+  For immediate synchronous updates (e.g. `setSearching(true)` before a debounce), wrap in `requestAnimationFrame`.
+- **tsc may show stale `.next/dev/types` errors after moving/renaming page files** — `rm -rf .next` (or run the dev server) to regenerate; not a source error.
+- Background dev servers get reaped when a terminal session ends; `nohup`/`&` don't survive either. Use `screen -dmS codeshelf bash -c '… exec node node_modules/.bin/next dev …'` to keep one alive, or run server+tests in a single command.
+- Restore/delete-archive operations require `unzip` on PATH (macOS has it).
 - `getLanguageColor` / `getFrameworkColor` in `src/lib/utils.ts` drive all language/dot colors.
-- API routes live in `src/app/api/...` (projects, projects/[id], dashboard, backup, collections, tags, search, import/scan).
+- API routes live in `src/app/api/...` (auth/*, projects, projects/[id], dashboard, backup incl. PUT restore, settings, collections, tags, search, import/scan).
 
 ---
 
 ## How sessions continue here
 
 A new session should:
-1. Read this file + `README.md` + the memory index.
-2. Start the dev server (`node node_modules/.bin/next dev`) and open the app to eyeball current state.
-3. Continue from **"Known gaps"** order — finish the highest-priority item first.
-4. After every batch of work: audit for errors (run dev server / `next build`), then commit small slices.
-5. **Update this file** — new "Done" items, progress ticks on gaps, new traps discovered, the actual build timestamp. Then commit the progress update too.
+1. Read this file + `README.md`.
+2. Start the dev server and open the app to eyeball current state (register a fresh account if DB was reset).
+3. Continue from **"Known gaps"** order — highest priority first.
+4. After every batch: `tsc --noEmit`, `eslint src`, `next build`, then commit small slices.
+5. **Update this file**, then commit the progress update too.
 
 ---
 
@@ -104,4 +135,3 @@ A new session should:
 - Small, single-purpose micro-commits.
 - Messages: `feat:`, `fix:`, `refactor:`, `style:`, `chore:`, `docs:` prefix.
 - Backdate with `GIT_AUTHOR_DATE` + `GIT_COMMITTER_DATE` to keep each day (Sep 2–16) at ≥12 commits.
-- End commit bodies with the standard Claude Code attribution line.
