@@ -93,6 +93,8 @@ export async function GET(request: NextRequest) {
       dependencies: p.dependencies ? JSON.parse(p.dependencies) : [],
       devDependencies: p.devDependencies ? JSON.parse(p.devDependencies) : [],
       scripts: p.scripts ? JSON.parse(p.scripts) : [],
+      // Convert BigInt in nested backups too (spread above keeps them raw)
+      backups: p.backups.map(b => ({ ...b, size: Number(b.size) })),
     }));
 
     return NextResponse.json(formattedProjects);
