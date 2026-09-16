@@ -1,12 +1,14 @@
 {
-  "name": "codeshelf-temp",
+  "name": "codeshelf",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:setup": "createdb codeshelf 2>/dev/null || true && prisma db push",
+    "db:reset": "dropdb codeshelf --if-exists && npm run db:setup"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
