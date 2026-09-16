@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -63,8 +62,28 @@ export default function CollectionsPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [colRes, tagRes] = await Promise.all([
+          fetch('/api/collections'),
+          fetch('/api/tags'),
+        ]);
+        const [colData, tagData] = await Promise.all([colRes.json(), tagRes.json()]);
+        if (!cancelled) {
+          setCollections(colData);
+          setTags(tagData);
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleCreateCollection = async (e: React.FormEvent) => {
     e.preventDefault();

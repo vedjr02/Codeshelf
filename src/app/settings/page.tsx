@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -42,26 +42,29 @@ export default function SettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [initialLoaded, setInitialLoaded] = useState(false);
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch('/api/settings');
-      if (!res.ok) throw new Error('Failed to load settings');
-      const data: SettingsData = await res.json();
-      setBackupPath(data.backupPath || '/tmp/codeshelf-backups');
-      setDefaultProvider(data.defaultProvider || 'local');
-      setAutoBackup(data.autoBackup ?? false);
-      setNotifications(data.notifications ?? true);
-      setLoadError(null);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to load settings');
-    } finally {
-      setInitialLoaded(true);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('Failed to load settings');
+        const data: SettingsData = await res.json();
+        if (cancelled) return;
+        setBackupPath(data.backupPath || '/tmp/codeshelf-backups');
+        setDefaultProvider(data.defaultProvider || 'local');
+        setAutoBackup(data.autoBackup ?? false);
+        setNotifications(data.notifications ?? true);
+        setLoadError(null);
+      } catch (err) {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load settings');
+      } finally {
+        if (!cancelled) setInitialLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSave = async () => {
     if (autoBackup && !backupPath.trim()) {

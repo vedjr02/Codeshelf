@@ -64,8 +64,26 @@ export default function BackupsPage() {
   }, []);
 
   useEffect(() => {
-    fetchBackups();
-  }, [fetchBackups]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/backup');
+        if (!res.ok) throw new Error('Failed to load backups');
+        const data = await res.json();
+        if (!cancelled) {
+          setBackups(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load backups');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;

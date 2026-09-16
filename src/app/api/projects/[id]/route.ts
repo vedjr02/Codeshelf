@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { detectProject } from '@/lib/project-detector';
 import { getSessionUser } from '@/lib/session';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+interface FileNode {
+  name: string;
+  type: 'file' | 'directory';
+  path: string;
+  size?: number;
+  children?: FileNode[];
+}
+
 // Helper for file tree generation
-async function getFileTree(dirPath: string, maxDepth = 3, currentDepth = 0): Promise<any[]> {
+async function getFileTree(dirPath: string, maxDepth = 3, currentDepth = 0): Promise<FileNode[]> {
   if (currentDepth >= maxDepth) return [];
 
   const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', '__pycache__', '.venv', 'venv'];
 
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    const result: any[] = [];
+    const result: FileNode[] = [];
 
     for (const entry of entries) {
       if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
@@ -39,7 +46,7 @@ async function getFileTree(dirPath: string, maxDepth = 3, currentDepth = 0): Pro
             size: stats.size,
           });
         } catch {
-          // Skip
+          // Skip files we cannot stat
         }
       }
     }
@@ -96,7 +103,7 @@ export async function GET(
     });
 
     // Get live file structure
-    let fileStructure = [];
+    let fileStructure: FileNode[] = [];
     try {
       fileStructure = await getFileTree(project.path);
     } catch {
@@ -149,7 +156,7 @@ export async function PATCH(
       collectionIds,
     } = body;
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (notes !== undefined) updateData.notes = notes;

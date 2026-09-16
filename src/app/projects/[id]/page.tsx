@@ -79,6 +79,7 @@ function ProjectDetailContent() {
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -99,8 +100,26 @@ function ProjectDetailContent() {
   }, [id]);
 
   useEffect(() => {
-    fetchProject();
-  }, [fetchProject]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/projects/${id}`);
+        if (!res.ok) throw new Error('Project not found');
+        const data = await res.json();
+        if (cancelled) return;
+        setProject(data);
+        setNotes(data.notes || '');
+      } catch (error) {
+        console.error('Failed to load project:', error);
+        if (!cancelled) setLoadError('Project not found or failed to load');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const handleSaveNotes = async () => {
     try {
@@ -181,8 +200,8 @@ function ProjectDetailContent() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <EmptyState
-          title="Project not found"
-          description="The requested project could not be found."
+          title={loadError ? 'Failed to load project' : 'Project not found'}
+          description={loadError || 'The requested project could not be found.'}
           action={
             <Link href="/projects">
               <Button variant="secondary" className="rounded-xl">Back to Projects</Button>

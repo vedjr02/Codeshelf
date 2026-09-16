@@ -5,13 +5,12 @@ import { Sidebar } from '@/components/sidebar';
 import { CommandPalette } from '@/components/command-palette';
 import type { SessionUser } from '@/lib/session';
 import { useToast } from '@/components/ui/toast';
-import { Menu, LogOut, Loader2, FolderGit2, Search } from 'lucide-react';
+import { Menu, FolderGit2, Search } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { success } = useToast();
 
   useEffect(() => {
@@ -39,13 +38,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [mobileOpen]);
 
   const handleLogout = useCallback(async () => {
-    setIsLoggingOut(true);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
       success('Signed out', 'See you soon.');
-      window.location.href = '/login';
-    } catch {
-      setIsLoggingOut(false);
+    } finally {
+      // Hard navigation is intentional: it clears every client cache and
+      // React state after the session is destroyed (router.push would keep
+      // prefetched authenticated pages alive).
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign('/login');
     }
   }, [success]);
 
@@ -54,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       {/* Desktop sidebar — fixed, inside the shell's padded gutter */}
       <div className="hidden md:block pl-72">
-        <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} isLoggingOut={isLoggingOut} />
+        <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} />
       </div>
 
       {/* Mobile drawer */}
@@ -65,7 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in-right">
-            <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} isLoggingOut={isLoggingOut} onNavigate={() => setMobileOpen(false)} />
+            <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       )}

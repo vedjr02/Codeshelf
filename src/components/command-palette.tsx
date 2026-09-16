@@ -57,10 +57,25 @@ export function CommandPalette() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        setOpen((prev) => {
+          if (!prev) {
+            // Reset state when opening (event context — lint-safe)
+            setQuery('');
+            setProjects([]);
+            setSearching(false);
+            setActiveIndex(0);
+          }
+          return !prev;
+        });
       }
     };
-    const onOpenEvent = () => setOpen(true);
+    const onOpenEvent = () => {
+      setQuery('');
+      setProjects([]);
+      setSearching(false);
+      setActiveIndex(0);
+      setOpen(true);
+    };
     window.addEventListener('keydown', onKey);
     window.addEventListener('codeshelf:open-palette', onOpenEvent);
     return () => {
@@ -69,23 +84,13 @@ export function CommandPalette() {
     };
   }, []);
 
-  // Reset state on open
-  React.useEffect(() => {
-    if (open) {
-      setQuery('');
-      setProjects([]);
-      setActiveIndex(0);
-    }
-  }, [open]);
 
   // Debounced search
   React.useEffect(() => {
     if (!open || !query.trim()) {
-      setProjects([]);
-      setSearching(false);
       return;
     }
-    setSearching(true);
+    const id = requestAnimationFrame(() => setSearching(true));
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -103,6 +108,7 @@ export function CommandPalette() {
       }
     }, 200);
     return () => {
+      cancelAnimationFrame(id);
       controller.abort();
       clearTimeout(timer);
     };
@@ -146,15 +152,13 @@ export function CommandPalette() {
     return [...projectItems, ...filteredActions, ...searchInLibrary];
   }, [projects, query]);
 
-  // Keep selection in bounds + scroll active item into view
-  React.useEffect(() => {
-    setActiveIndex((i) => Math.min(i, Math.max(0, items.length - 1)));
-  }, [items.length]);
+  // Selection clamped to the current item count
+  const selected = Math.min(activeIndex, Math.max(0, items.length - 1));
 
   React.useEffect(() => {
-    const el = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
+    const el = listRef.current?.querySelector(`[data-index="${selected}"]`);
     el?.scrollIntoView({ block: 'nearest' });
-  }, [activeIndex]);
+  }, [selected]);
 
   const selectItem = (item: PaletteItem) => {
     setOpen(false);
@@ -170,7 +174,7 @@ export function CommandPalette() {
       setActiveIndex((i) => (items.length ? (i - 1 + items.length) % items.length : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const item = items[activeIndex];
+      const item = items[selected];
       if (item) selectItem(item);
     }
   };
@@ -224,7 +228,7 @@ export function CommandPalette() {
                   onMouseEnter={() => setActiveIndex(index)}
                   className={cn(
                     'w-full flex items-center gap-3.5 px-3 py-2.5 rounded-[12px] text-left transition-colors duration-100',
-                    index === activeIndex ? 'bg-white/[0.08]' : 'bg-transparent'
+                    index === selected ? 'bg-white/[0.08]' : 'bg-transparent'
                   )}
                 >
                   <span className="flex items-center justify-center w-5 shrink-0">{item.icon}</span>
@@ -234,7 +238,7 @@ export function CommandPalette() {
                       <span className="block text-[11.5px] text-white/35 truncate font-mono mt-0.5">{item.sublabel}</span>
                     )}
                   </span>
-                  {index === activeIndex && (
+                  {index === selected && (
                     <CornerDownLeft className="w-3.5 h-3.5 text-white/30 shrink-0" />
                   )}
                 </button>

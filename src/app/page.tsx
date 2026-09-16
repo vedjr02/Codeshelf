@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState, LoadingState } from '@/components/ui/states';
-import { formatBytes, getLanguageColor, getFrameworkColor, formatRelativeTime } from '@/lib/utils';
+import { getLanguageColor, getFrameworkColor, formatRelativeTime } from '@/lib/utils';
 import {
   FolderGit2,
   HardDrive,
@@ -21,6 +21,8 @@ import {
   Clock,
   Sparkles,
   FolderOpen,
+  FolderSearch,
+  FolderKanban,
   ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -198,8 +200,26 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/dashboard');
+        if (!res.ok) throw new Error('Failed to fetch stats');
+        const data = await res.json();
+        if (!cancelled) {
+          setStats(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -227,6 +247,94 @@ export default function DashboardPage() {
   }
 
   if (!stats) return null;
+
+  // First-run onboarding: the library is empty — show a real getting-started flow
+  if (stats.totalProjects === 0) {
+    return (
+      <div className="min-h-screen">
+        <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
+          <div className="flex items-end justify-between mb-10 animate-rise">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4" />
+                  {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                </span>
+              </div>
+              <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
+                Welcome to <span className="text-gradient">CodeShelf</span>
+              </h1>
+              <p className="text-[16px] text-[#86868b]">Your shelf is empty — let&apos;s fill it.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 stagger">
+            {[
+              {
+                step: '1',
+                icon: FolderSearch,
+                color: '#2997ff',
+                title: 'Scan a folder',
+                body: 'Point CodeShelf at your projects directory. It finds repos and detects languages, frameworks and git state automatically.',
+                href: '/import',
+                cta: 'Scan now',
+              },
+              {
+                step: '2',
+                icon: FolderKanban,
+                color: '#ff9f0a',
+                title: 'Organize',
+                body: 'Group related projects into collections and tag them so everything is findable later.',
+                href: '/collections',
+                cta: 'Create collections',
+              },
+              {
+                step: '3',
+                icon: ShieldCheck,
+                color: '#30d158',
+                title: 'Protect your work',
+                body: 'Take zip snapshots of any project in one click — stored locally, restorable anytime.',
+                href: '/backups',
+                cta: 'See backups',
+              },
+            ].map((step) => (
+              <Card
+                key={step.step}
+                className="group relative overflow-hidden p-7 bg-white/[0.04] border-white/[0.1] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <div
+                    className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+                    style={{ backgroundColor: `${step.color}14`, color: step.color }}
+                  >
+                    <step.icon className="w-[22px] h-[22px]" />
+                  </div>
+                  <span
+                    className="text-[44px] font-bold tracking-tighter leading-none select-none"
+                    style={{ color: `${step.color}2e` }}
+                  >
+                    {step.step}
+                  </span>
+                </div>
+                <h3 className="text-[18px] font-semibold tracking-tight mb-2">{step.title}</h3>
+                <p className="text-[13.5px] text-[#86868b] leading-relaxed mb-6">{step.body}</p>
+                <Link href={step.href}>
+                  <Button variant="secondary" size="sm" className="rounded-full gap-1.5 group-hover:bg-white/[0.12] transition-colors">
+                    {step.cta}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+              </Card>
+            ))}
+          </div>
+
+          <p className="text-center text-[13px] text-white/30 mt-10 animate-fade">
+            Tip: press <kbd className="text-[11px] border border-white/12 rounded-md px-1.5 py-0.5 mx-0.5">⌘K</kbd> anywhere to search or jump around.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const backupPercent = stats.totalProjects > 0
     ? Math.round(((stats.totalProjects - stats.projectsNeedingBackup.length) / stats.totalProjects) * 100)

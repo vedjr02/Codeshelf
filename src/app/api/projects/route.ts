@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { detectProject } from '@/lib/project-detector';
 import { hashString } from '@/lib/utils';
 import { getSessionUser } from '@/lib/session';
-import * as path from 'path';
+import { Prisma } from '@prisma/client';
 
 // GET /api/projects - List projects with filtering and sorting
 export async function GET(request: NextRequest) {
@@ -23,9 +23,8 @@ export async function GET(request: NextRequest) {
     const isFavorite = searchParams.get('isFavorite');
     const isArchived = searchParams.get('isArchived');
     const sortBy = searchParams.get('sortBy') || 'lastModified';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    const where: any = {
+    const where: Prisma.ProjectWhereInput = {
       userId: user.id,
     };
 
@@ -60,11 +59,15 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const orderBy: any = {};
-    if (sortBy === 'name') orderBy.name = sortOrder;
-    else if (sortBy === 'size') orderBy.size = sortOrder;
-    else if (sortBy === 'lastOpened') orderBy.lastOpened = sortOrder;
-    else orderBy.lastModified = sortOrder;
+    const sortOrder = searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+    const orderBy: Prisma.ProjectOrderByWithRelationInput =
+      sortBy === 'name'
+        ? { name: sortOrder }
+        : sortBy === 'size'
+          ? { size: sortOrder }
+          : sortBy === 'lastOpened'
+            ? { lastOpened: sortOrder }
+            : { lastModified: sortOrder };
 
     const projects = await prisma.project.findMany({
       where,

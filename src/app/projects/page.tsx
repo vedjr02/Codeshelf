@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ProjectCard } from '@/components/project-card';
 import { Input } from '@/components/ui/input';
@@ -60,36 +60,42 @@ function ProjectsContent() {
   const [filterArchived, setFilterArchived] = useState(false);
   const [collectionId, setCollectionId] = useState<string>(initialCollectionId);
   const [tagId, setTagId] = useState<string>(initialTagId);
+  const [retryCount, setRetryCount] = useState(0);
   const [collectionName, setCollectionName] = useState<string | null>(null);
   const [tagName, setTagName] = useState<string | null>(null);
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-
-      if (search) params.set('search', search);
-      if (language && language !== 'all') params.set('language', language);
-      if (sortBy) params.set('sortBy', sortBy);
-      if (filterFavorite) params.set('isFavorite', 'true');
-      if (filterArchived) params.set('isArchived', 'true');
-      if (collectionId) params.set('collectionId', collectionId);
-      if (tagId) params.set('tagId', tagId);
-
-      const res = await fetch(`/api/projects?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch projects');
-      const data = await res.json();
-      setProjects(data);
-      setError(null);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  }, [search, language, sortBy, filterFavorite, filterArchived, collectionId, tagId]);
-
+  // Debounced fetch: waits for typing to settle before hitting the API
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (language && language !== 'all') params.set('language', language);
+        if (sortBy) params.set('sortBy', sortBy);
+        if (filterFavorite) params.set('isFavorite', 'true');
+        if (filterArchived) params.set('isArchived', 'true');
+        if (collectionId) params.set('collectionId', collectionId);
+        if (tagId) params.set('tagId', tagId);
+
+        const res = await fetch(`/api/projects?${params.toString()}`);
+        if (!res.ok) throw new Error('Failed to fetch projects');
+        const data = await res.json();
+        if (!cancelled) {
+          setProjects(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load projects');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, language, sortBy, filterFavorite, filterArchived, collectionId, tagId, retryCount]);
 
   const handleToggleFavorite = async (id: string) => {
     const project = projects.find((p) => p.id === id);
@@ -126,7 +132,9 @@ function ProjectsContent() {
       });
 
       if (res.ok) {
-        fetchProjects();
+        setProjects((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, isArchived: !p.isArchived } : p))
+        );
       }
     } catch (error) {
       console.error('Failed to archive project:', error);
@@ -155,34 +163,34 @@ function ProjectsContent() {
 
   // Resolve collection/tag names for the active filter banner
   useEffect(() => {
+    if (!collectionId) return;
     let cancelled = false;
-    if (collectionId) {
-      fetch('/api/collections')
-        .then((r) => (r.ok ? r.json() : []))
-        .then((cols: Array<{ id: string; name: string }>) => {
-          if (!cancelled) setCollectionName(cols.find((c) => c.id === collectionId)?.name || 'Collection');
-        })
-        .catch(() => {});
-    } else {
-      setCollectionName(null);
-    }
+    (async () => {
+      try {
+        const res = await fetch('/api/collections');
+        const cols: Array<{ id: string; name: string }> = res.ok ? await res.json() : [];
+        if (!cancelled) setCollectionName(cols.find((c) => c.id === collectionId)?.name || 'Collection');
+      } catch {
+        if (!cancelled) setCollectionName('Collection');
+      }
+    })();
     return () => {
       cancelled = true;
     };
   }, [collectionId]);
 
   useEffect(() => {
+    if (!tagId) return;
     let cancelled = false;
-    if (tagId) {
-      fetch('/api/tags')
-        .then((r) => (r.ok ? r.json() : []))
-        .then((tags: Array<{ id: string; name: string }>) => {
-          if (!cancelled) setTagName(tags.find((t) => t.id === tagId)?.name || 'Tag');
-        })
-        .catch(() => {});
-    } else {
-      setTagName(null);
-    }
+    (async () => {
+      try {
+        const res = await fetch('/api/tags');
+        const tags: Array<{ id: string; name: string }> = res.ok ? await res.json() : [];
+        if (!cancelled) setTagName(tags.find((t) => t.id === tagId)?.name || 'Tag');
+      } catch {
+        if (!cancelled) setTagName('Tag');
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -219,7 +227,7 @@ function ProjectsContent() {
           {hasActiveContextFilters && (
             <div className="flex items-center gap-2.5 mb-5 animate-fade">
               <span className="text-[13px] text-[#86868b]">Filtered by</span>
-              {collectionName && (
+              {collectionId && collectionName && (
                 <button
                   onClick={() => setCollectionId('')}
                   className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2997ff]/12 border border-[#2997ff]/25 text-[12.5px] font-medium text-[#2997ff] hover:bg-[#2997ff]/20 transition-colors"
@@ -229,7 +237,7 @@ function ProjectsContent() {
                   <X className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
                 </button>
               )}
-              {tagName && (
+              {tagId && tagName && (
                 <button
                   onClick={() => setTagId('')}
                   className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff9f0a]/12 border border-[#ff9f0a]/25 text-[12.5px] font-medium text-[#ff9f0a] hover:bg-[#ff9f0a]/20 transition-colors"
@@ -315,7 +323,15 @@ function ProjectsContent() {
               title="Failed to load projects"
               description={error}
               action={
-                <Button variant="secondary" onClick={fetchProjects}>Try again</Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setLoading(true);
+                    setRetryCount((n) => n + 1);
+                  }}
+                >
+                  Try again
+                </Button>
               }
               className="py-16"
             />

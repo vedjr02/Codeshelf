@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseSearchQuery } from '@/lib/utils';
 import { getSessionUser } from '@/lib/session';
+import { Prisma } from '@prisma/client';
 
 // GET /api/search - Smart global search across projects
 export async function GET(request: NextRequest) {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     const { text, filters } = parseSearchQuery(rawQuery);
 
     // Build the query
-    const where: any = {
+    const where: Prisma.ProjectWhereInput = {
       userId: user.id,
       isArchived: false,
     };
