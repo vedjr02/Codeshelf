@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import {
-  createBackup,
-  restoreBackup,
-  deleteBackup,
-  ensureBackupDirectory,
-  getBackupInfo,
-} from '@/lib/backup';
+import { Prisma } from '@prisma/client';
+import { createBackup, deleteBackup, ensureBackupDirectory } from '@/lib/backup';
 
 const DEFAULT_USER_ID = 'dev-user-id';
 
@@ -16,7 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
 
-    const where: any = { userId: DEFAULT_USER_ID };
+    const where: Prisma.BackupWhereInput = { userId: DEFAULT_USER_ID };
     if (projectId) where.projectId = projectId;
 
     const backups = await prisma.backup.findMany({
@@ -93,7 +88,7 @@ export async function POST(request: NextRequest) {
         projectId: project.id,
         projectPath: project.path,
         outputPath: backup.storagePath,
-        onProgress: async (progress, currentFile) => {
+        onProgress: async (progress) => {
           // Update progress in DB (could use WebSocket for real-time updates)
           if (progress % 10 === 0) {
             await prisma.backup.update({

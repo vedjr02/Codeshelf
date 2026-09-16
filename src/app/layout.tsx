@@ -14,14 +14,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="relative">
-        {/* Ambient background orbs */}
+        {/* Ambient background — subtle radial glows, much softer than before */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute -top-40 -left-40 h-[34rem] w-[34rem] rounded-full bg-violet-600/10 blur-[120px] animate-float" />
-          <div className="absolute top-1/3 -right-40 h-[30rem] w-[30rem] rounded-full bg-fuchsia-600/[0.08] blur-[120px] animate-float" style={{ animationDelay: '-3s' }} />
-          <div className="absolute -bottom-48 left-1/4 h-[28rem] w-[28rem] rounded-full bg-sky-600/[0.07] blur-[120px] animate-float" style={{ animationDelay: '-5s' }} />
+          <div className="absolute inset-x-0 top-0 h-[32rem]"
+            style={{ background: 'radial-gradient(60% 50% at 50% -5%, rgba(41,151,255,0.10), transparent 70%)' }} />
+          <div className="absolute -bottom-64 -left-40 h-[28rem] w-[28rem] rounded-full bg-[#2997ff]/[0.04] blur-[120px]" />
+          <div className="absolute -top-40 -right-40 h-[26rem] w-[26rem] rounded-full bg-white/[0.03] blur-[110px]" />
         </div>
 
-        <main className="pl-64 relative z-10 min-h-screen">
+        <main className="pl-72 relative z-10 min-h-screen">
           {children}
         </main>
       </body>

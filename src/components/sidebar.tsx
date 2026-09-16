@@ -65,36 +65,36 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-zinc-950/60 backdrop-blur-2xl border-r border-white/[0.06] flex flex-col z-20">
+    <aside className="fixed left-0 top-0 h-screen w-72 bg-black/70 backdrop-blur-2xl saturate-150 border-r border-white/[0.08] flex flex-col z-20">
       {/* Logo */}
-      <div className="px-5 pt-6 pb-5">
+      <div className="px-6 pt-7 pb-6">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="relative">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/25 group-hover:scale-105 transition-transform duration-200">
-              <FolderGit2 className="w-5 h-5 text-white" />
+            <div className="w-11 h-11 rounded-[14px] bg-white/[0.08] border border-white/10 flex items-center justify-center group-hover:bg-white/[0.12] transition-colors duration-200">
+              <FolderGit2 className="w-5 h-5 text-[#2997ff]" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-zinc-950" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#30d158] border-2 border-black" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[15px] font-semibold tracking-tight leading-none">CodeShelf</span>
-            <span className="text-[11px] text-white/40 leading-none mt-1.5">Project Library</span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-[17px] font-semibold tracking-tight">CodeShelf</span>
+            <span className="text-[12px] text-[#86868b] mt-0.5">Project Library</span>
           </div>
         </Link>
       </div>
 
       {/* Search */}
-      <div className="px-4 mb-4">
+      <div className="px-4 mb-5">
         <form onSubmit={handleSearch}>
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/35 group-focus-within:text-violet-400 transition-colors" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b] group-focus-within:text-[#2997ff] transition-colors" />
             <Input
               type="text"
               placeholder="Search projects"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 text-[13px] rounded-xl bg-white/[0.045] border-white/[0.08] focus:ring-violet-500/30 hover:bg-white/[0.07] transition-colors"
+              className="pl-10 h-11 text-[14px] rounded-[12px] bg-white/[0.06] border-white/[0.1] focus:ring-[#2997ff]/30 hover:bg-white/[0.09] transition-colors"
             />
-            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-white/25 border border-white/10 rounded-md px-1.5 py-0.5 pointer-events-none font-sans hidden sm:block">
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#86868b] border border-white/10 rounded-md px-1.5 py-0.5 pointer-events-none font-sans hidden sm:block">
               ⌘K
             </kbd>
           </div>
@@ -104,11 +104,11 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto no-scrollbar px-3">
         {navSections.map((section) => (
-          <div key={section.label} className="mb-5">
-            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
+          <div key={section.label} className="mb-6">
+            <div className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
               {section.label}
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
@@ -117,24 +117,24 @@ export function Sidebar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 relative',
+                      'group flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[14px] font-medium transition-all duration-200 relative',
                       isActive
-                        ? 'text-white'
-                        : 'text-white/55 hover:text-white hover:bg-white/[0.05]'
+                        ? 'text-white bg-white/[0.08]'
+                        : 'text-[#86868b] hover:text-white hover:bg-white/[0.05]'
                     )}
                   >
-                    {isActive && (
-                      <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-violet-500/20 via-fuchsia-500/10 to-transparent ring-1 ring-inset ring-white/10 transition-all duration-300" />
-                    )}
                     <Icon
                       className={cn(
-                        'w-4 h-4 relative transition-all duration-200',
-                        isActive ? 'text-violet-300' : 'text-white/40 group-hover:text-white/70'
+                        'w-[18px] h-[18px] relative transition-colors',
+                        isActive ? 'text-[#2997ff]' : 'text-[#86868b] group-hover:text-white'
                       )}
                     />
                     <span className="relative">{item.label}</span>
                     {isActive && (
-                      <ChevronRight className="w-3.5 h-3.5 text-violet-300/60 ml-auto relative" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-[#2997ff]" />
+                    )}
+                    {isActive && (
+                      <ChevronRight className="w-3.5 h-3.5 text-white/40 ml-auto relative" />
                     )}
                   </Link>
                 );
@@ -147,7 +147,7 @@ export function Sidebar() {
         <div className="pt-1">
           <Link
             href="/import"
-            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-gradient-to-r from-violet-600/80 via-fuchsia-600/70 to-violet-600/80 bg-[length:200%_100%] bg-left hover:bg-right transition-[background-position] duration-500 shadow-lg shadow-violet-900/30 hover:shadow-violet-700/30"
+            className="group flex items-center gap-2.5 px-3.5 py-3 rounded-[12px] text-[14px] font-semibold text-white bg-[#0a84ff] hover:bg-[#2997ff] transition-colors shadow-[0_2px_16px_-2px_rgba(10,132,255,0.4)]"
           >
             <Plus className="w-4 h-4" />
             Import Project
@@ -157,23 +157,23 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 pb-5 pt-4 border-t border-white/[0.06]">
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+      <div className="px-4 pb-6 pt-4 border-t border-white/[0.08]">
+        <div className="rounded-[14px] bg-white/[0.04] border border-white/[0.08] p-3.5">
+          <div className="flex items-center gap-3 mb-2.5">
+            <div className="w-8 h-8 rounded-[10px] bg-[#30d158]/10 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-[#30d158]" />
             </div>
             <div className="flex flex-col leading-tight">
-              <span className="text-[12px] font-semibold text-white/80">Local Protection</span>
-              <span className="text-[10px] text-white/40 font-mono">v1.0.0</span>
+              <span className="text-[13px] font-semibold text-white/80">Library Protected</span>
+              <span className="text-[11px] text-[#86868b] font-mono">v1.0.0</span>
             </div>
           </div>
           {ticker && (
-            <div className="flex items-center justify-between text-[10px] text-white/40">
+            <div className="flex items-center justify-between text-[11px] text-[#86868b]">
               <span>{ticker.totalProjects} projects</span>
               {ticker.projectsNeedingBackup > 0 && (
-                <span className="text-amber-400/80 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse-soft" />
+                <span className="text-[#ff9f0a] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] animate-pulse-soft" />
                   {ticker.projectsNeedingBackup} need backup
                 </span>
               )}

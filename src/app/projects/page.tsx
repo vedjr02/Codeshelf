@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { ProjectCard } from '@/components/project-card';
@@ -57,13 +57,8 @@ function ProjectsContent() {
   const [filterFavorite, setFilterFavorite] = useState(false);
   const [filterArchived, setFilterArchived] = useState(false);
 
-  useEffect(() => {
-    fetchProjects();
-  }, [search, language, sortBy, filterFavorite, filterArchived]);
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
-      setLoading(true);
       const params = new URLSearchParams();
 
       if (search) params.set('search', search);
@@ -81,7 +76,11 @@ function ProjectsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, language, sortBy, filterFavorite, filterArchived]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   const handleToggleFavorite = async (id: string) => {
     const project = projects.find((p) => p.id === id);
@@ -149,44 +148,44 @@ function ProjectsContent() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-8 py-8">
+        <div className="max-w-7xl mx-auto px-10 py-10">
           {/* Header */}
-          <div className="flex items-end justify-between mb-8 animate-rise">
+          <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-fuchsia-400/80 flex items-center gap-1.5 mb-2">
-                <Layers className="w-3.5 h-3.5" />
+              <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
+                <Layers className="w-4 h-4" />
                 Project Library
               </span>
-              <h1 className="text-[28px] font-semibold tracking-tight leading-none mb-1">
+              <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
                 All Projects
               </h1>
-              <p className="text-[13px] text-white/40">
+              <p className="text-[16px] text-[#86868b]">
                 {projects.length} {projects.length === 1 ? 'project' : 'projects'} in your library
               </p>
             </div>
             <Link href="/import">
-              <Button size="sm" className="gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-900/40">
-                <Plus className="w-4 h-4" />
+              <Button size="lg" className="gap-2 rounded-full px-6">
+                <Plus className="w-[18px] h-[18px]" />
                 Import Project
               </Button>
             </Link>
           </div>
 
           {/* Filters & Search */}
-          <div className="flex flex-wrap items-center gap-3 mb-6 animate-rise" style={{ animationDelay: '0.05s' }}>
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/35" />
+          <div className="flex flex-wrap items-center gap-3 mb-8 animate-rise" style={{ animationDelay: '0.05s' }}>
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#86868b]" />
               <Input
                 type="text"
                 placeholder="Search by name, language, tag..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-white/[0.045] border-white/[0.08] text-[13px] rounded-xl focus:ring-violet-500/30"
+                className="pl-10"
               />
             </div>
 
             <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-[150px] bg-white/[0.045] border-white/[0.08] text-[13px] rounded-xl">
+              <SelectTrigger className="w-[170px]">
                 <SelectValue placeholder="Language" />
               </SelectTrigger>
               <SelectContent>
@@ -200,7 +199,7 @@ function ProjectsContent() {
             </Select>
 
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[150px] bg-white/[0.045] border-white/[0.08] text-[13px] rounded-xl">
+              <SelectTrigger className="w-[170px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -213,25 +212,25 @@ function ProjectsContent() {
 
             <button
               onClick={() => setFilterFavorite(!filterFavorite)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border transition-all duration-200 ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
                 filterFavorite
-                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
-                  : 'bg-white/[0.045] border-white/[0.08] text-white/60 hover:text-white hover:border-white/[0.15]'
+                  ? 'bg-[#ffd60a]/15 border-[#ffd60a]/30 text-[#ffd60a]'
+                  : 'bg-white/[0.05] border-white/[0.1] text-white/60 hover:text-white hover:border-white/[0.2]'
               }`}
             >
-              <Star className="w-3.5 h-3.5" />
+              <Star className="w-4 h-4" />
               Favorites
             </button>
 
             <button
               onClick={() => setFilterArchived(!filterArchived)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border transition-all duration-200 ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
                 filterArchived
-                  ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                  : 'bg-white/[0.045] border-white/[0.08] text-white/60 hover:text-white hover:border-white/[0.15]'
+                  ? 'bg-[#0a84ff]/15 border-[#0a84ff]/30 text-[#2997ff]'
+                  : 'bg-white/[0.05] border-white/[0.1] text-white/60 hover:text-white hover:border-white/[0.2]'
               }`}
             >
-              <Archive className="w-3.5 h-3.5" />
+              <Archive className="w-4 h-4" />
               Archived
             </button>
           </div>
@@ -250,7 +249,7 @@ function ProjectsContent() {
               }
               action={
                 <Link href="/import">
-                  <Button variant="secondary" className="rounded-xl">
+                  <Button variant="secondary" className="rounded-full">
                     <Plus className="w-4 h-4 mr-2" />
                     Import Project
                   </Button>
@@ -259,7 +258,7 @@ function ProjectsContent() {
               className="py-16"
             />
           ) : (
-            <div className="grid grid-cols-1 gap-3 stagger">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
               {projects.map((project) => (
                 <ProjectCard
                   key={project.id}

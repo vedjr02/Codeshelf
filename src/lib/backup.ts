@@ -3,6 +3,8 @@ import * as path from 'path';
 import { createWriteStream } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+// archiver v8 is ESM-only and exports classes, not a callable factory
+import { ZipArchive } from 'archiver';
 
 const execAsync = promisify(exec);
 
@@ -52,11 +54,9 @@ export async function createBackup(options: BackupOptions): Promise<{ size: numb
     let total = 0;
     let resolved = false;
 
-    // archiver v8 is ESM-only and exports classes, not a callable factory
-    const { ZipArchive } = require('archiver');
     const archive = new ZipArchive({ zlib: { level: 6 } });
 
-    archive.on('entry', (entry: any) => {
+    archive.on('entry', (entry: { name: string }) => {
       fileCount++;
       if (onProgress && fileCount % 5 === 0) {
         onProgress(Math.min(99, Math.round((fileCount / Math.max(1, total)) * 100)), entry.name);
@@ -89,7 +89,7 @@ export async function createBackup(options: BackupOptions): Promise<{ size: numb
     });
 
     // Count the glob matches once so progress has a denominator
-    archive.on('progress', (data: any) => {
+    archive.on('progress', (data: { entries?: { total?: number } }) => {
       if (data.entries && data.entries.total) {
         total = data.entries.total;
       }

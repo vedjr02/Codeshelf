@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -88,7 +88,6 @@ function StatCard({
   unit,
   icon: Icon,
   accent,
-  gradient,
   delay,
 }: {
   label: string;
@@ -96,71 +95,60 @@ function StatCard({
   unit?: string;
   icon: React.ElementType;
   accent: string;
-  gradient: string;
   delay?: number;
 }) {
   const count = useCountUp(value);
   return (
     <Card
-      className="relative overflow-hidden group p-5 bg-white/[0.03] border-white/[0.07] hover:border-white/[0.12] transition-all duration-300 animate-rise"
+      className="relative overflow-hidden p-6 bg-white/[0.04] border-white/[0.1] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300 animate-rise"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div
-        className="absolute -top-16 -right-16 h-40 w-40 rounded-full opacity-[0.07] blur-2xl group-hover:opacity-20 transition-opacity duration-500"
-        style={{ background: gradient }}
-      />
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-center justify-between mb-5">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: `${accent}1a`, color: accent }}
+          className="w-11 h-11 rounded-[12px] flex items-center justify-center"
+          style={{ backgroundColor: `${accent}14`, color: accent }}
         >
-          <Icon className="w-5 h-5" />
+          <Icon className="w-[22px] h-[22px]" />
         </div>
-        <span className="w-1.5 h-1.5 rounded-full bg-white/15 group-hover:bg-white/30 transition-colors" />
+        <span className="w-2 h-2 rounded-full bg-white/[0.12]" />
       </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-[30px] font-semibold tracking-tight leading-none tabular-nums">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[40px] font-semibold tracking-tight leading-none tabular-nums">
           {count}
         </span>
-        {unit && <span className="text-sm text-white/40 font-medium">{unit}</span>}
+        {unit && <span className="text-[15px] text-[#86868b] font-medium">{unit}</span>}
       </div>
-      <div className="text-[12px] text-white/45 mt-1.5 font-medium">{label}</div>
+      <div className="text-[13px] text-[#86868b] mt-2 font-medium">{label}</div>
     </Card>
   );
 }
 
 function BackupRing({ percent }: { percent: number }) {
-  const radius = 30;
+  const radius = 34;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
   return (
-    <div className="relative w-20 h-20">
-      <svg className="w-20 h-20 -rotate-90" viewBox="0 0 72 72">
+    <div className="relative w-[92px] h-[92px]">
+      <svg className="w-[92px] h-[92px] -rotate-90" viewBox="0 0 80 80">
         <circle
-          cx="36" cy="36" r={radius}
+          cx="40" cy="40" r={radius}
           fill="none"
           stroke="rgba(255,255,255,0.08)"
-          strokeWidth="6"
+          strokeWidth="7"
         />
         <circle
-          cx="36" cy="36" r={radius}
+          cx="40" cy="40" r={radius}
           fill="none"
-          stroke="url(#ringGrad)"
-          strokeWidth="6"
+          stroke="#30d158"
+          strokeWidth="7"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className="transition-[stroke-dashoffset] duration-1000 ease-out"
         />
-        <defs>
-          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#34d399" />
-            <stop offset="100%" stopColor="#10b981" />
-          </linearGradient>
-        </defs>
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-semibold tabular-nums">{percent}%</span>
+        <span className="text-[22px] font-semibold tabular-nums tracking-tight">{percent}%</span>
       </div>
     </div>
   );
@@ -171,20 +159,20 @@ function LanguageBar({ name, count, max }: { name: string; count: number; max: n
   const pct = max > 0 ? (count / max) * 100 : 0;
   return (
     <div className="group/lb">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2.5 min-w-0">
           <span
             className="w-2.5 h-2.5 rounded-full lang-dot shrink-0"
             style={{ color, backgroundColor: color }}
           />
-          <span className="text-[13px] text-white/75 group-hover/lb:text-white transition-colors truncate">{name}</span>
+          <span className="text-[14px] text-white/80 group-hover/lb:text-white transition-colors truncate">{name}</span>
         </div>
-        <span className="text-[12px] text-white/35 group-hover/lb:text-white/60 transition-colors tabular-nums">{count}</span>
+        <span className="text-[13px] text-white/35 group-hover/lb:text-white/60 transition-colors tabular-nums">{count}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-[6px] rounded-full bg-white/[0.07] overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}b0, ${color}50)` }}
+          style={{ width: `${pct}%`, backgroundColor: color, opacity: 0.85 }}
         />
       </div>
     </div>
@@ -196,13 +184,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await fetch('/api/dashboard');
       if (!res.ok) throw new Error('Failed to fetch stats');
       const data = await res.json();
@@ -213,7 +196,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -232,7 +219,7 @@ export default function DashboardPage() {
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
-            icon={<AlertTriangle className="h-8 w-8 text-red-400" />}
+            icon={<AlertTriangle className="h-8 w-8 text-[#ff453a]" />}
             title="Failed to load dashboard"
             description={error}
             action={
@@ -260,32 +247,32 @@ export default function DashboardPage() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto px-8 py-8">
+        <div className="max-w-7xl mx-auto px-10 py-10">
           {/* Header */}
-          <div className="flex items-end justify-between mb-8 animate-rise">
+          <div className="flex items-end justify-between mb-10 animate-rise">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-400/80 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4" />
                   {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </span>
               </div>
-              <h1 className="text-[28px] font-semibold tracking-tight leading-none mb-1.5">
-                {greeting} <span className="text-gradient">Developer</span>
+              <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
+                {greeting}, <span className="text-gradient">Developer</span>
               </h1>
-              <p className="text-[13px] text-white/45">
+              <p className="text-[16px] text-[#86868b]">
                 Your project library at a glance
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <Link href="/projects?sortBy=lastOpened" className="hidden md:flex items-center gap-1.5 text-[13px] text-white/45 hover:text-white transition-colors">
-                <Clock className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-4">
+              <Link href="/projects?sortBy=lastOpened" className="hidden md:flex items-center gap-2 text-[14px] text-[#86868b] hover:text-white transition-colors">
+                <Clock className="w-4 h-4" />
                 Recently viewed
               </Link>
               <Link href="/import">
-                <Button size="sm" className="gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-900/40">
-                  <Plus className="w-4 h-4" />
+                <Button size="lg" className="gap-2 rounded-full px-6">
+                  <Plus className="w-[18px] h-[18px]" />
                   Import
                 </Button>
               </Link>
@@ -293,13 +280,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Stats grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8 stagger">
             <StatCard
               label="Projects in library"
               value={stats.totalProjects}
               icon={FolderGit2}
-              accent="#c4b5fd"
-              gradient="linear-gradient(135deg,#8b5cf6,#6366f1)"
+              accent="#2997ff"
               delay={0}
             />
             <StatCard
@@ -307,65 +293,62 @@ export default function DashboardPage() {
               value={Math.round(stats.totalSize / (1024 * 1024))}
               unit="MB"
               icon={HardDrive}
-              accent="#38bdf8"
-              gradient="linear-gradient(135deg,#0ea5e9,#22d3ee)"
+              accent="#30d158"
               delay={60}
             />
             <StatCard
               label="Languages detected"
               value={stats.languages.length}
               icon={Layers}
-              accent="#f472b6"
-              gradient="linear-gradient(135deg,#ec4899,#d946ef)"
+              accent="#ff9f0a"
               delay={120}
             />
             <StatCard
               label="Frameworks detected"
               value={stats.frameworks.length}
               icon={Boxes}
-              accent="#fbbf24"
-              gradient="linear-gradient(135deg,#f59e0b,#f97316)"
+              accent="#64d2ff"
               delay={180}
             />
           </div>
 
           {/* Main content */}
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-8">
             {/* Left — 2 cols */}
-            <div className="col-span-3 lg:col-span-2 space-y-6">
+            <div className="col-span-3 lg:col-span-2 space-y-8">
               {/* Language + Framework distribution */}
-              <Card className="p-6 bg-white/[0.03] border-white/[0.07] animate-rise" style={{ animationDelay: '220ms' }}>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-[15px] font-semibold tracking-tight">Tech Distribution</h2>
-                  <span className="text-[11px] text-white/35 font-mono">{stats.languages.length} langs · {stats.frameworks.length} frameworks</span>
+              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '220ms' }}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-[20px] font-semibold tracking-tight">Tech Distribution</h2>
+                  <span className="text-[12px] text-white/35 font-mono">{stats.languages.length} langs · {stats.frameworks.length} frameworks</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5">
-                  <div className="space-y-4">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/30 mb-3">Languages</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
+                  <div className="space-y-5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-1">Languages</div>
                     {stats.languages.length === 0 ? (
-                      <p className="text-[13px] text-white/35">No languages detected yet</p>
+                      <p className="text-[14px] text-[#86868b]">No languages detected yet</p>
                     ) : (
                       stats.languages.slice(0, 6).map((l) => (
                         <LanguageBar key={l.language} name={l.language} count={l.count} max={langMax} />
                       ))
                     )}
                   </div>
-                  <div className="space-y-4">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/30 mb-3">Frameworks</div>
+                  <div className="space-y-5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-1">Frameworks</div>
                     {stats.frameworks.length === 0 ? (
-                      <p className="text-[13px] text-white/35">No frameworks detected yet</p>
+                      <p className="text-[14px] text-[#86868b]">No frameworks detected yet</p>
                     ) : (
                       stats.frameworks.slice(0, 6).map((f) => {
-                        const c = getFrameworkColor(f.framework) || '#8b5cf6';
+                        const c = getFrameworkColor(f.framework) || '#2997ff';
                         const pct = (f.count / Math.max(1, ...stats.frameworks.map((x) => x.count))) * 100;
                         return (
                           <div key={f.framework} className="group/lb">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[13px] text-white/75 group-hover/lb:text-white transition-colors">{f.framework}</span>
-                              <span className="text-[12px] text-white/35 tabular-nums">{f.count}</span>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[14px] text-white/80 group-hover/lb:text-white transition-colors">{f.framework}</span>
+                              <span className="text-[13px] text-white/35 tabular-nums">{f.count}</span>
                             </div>
-                            <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${c}b8, ${c}50)` }} />
+                            <div className="h-[6px] rounded-full bg-white/[0.07] overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, backgroundColor: c, opacity: 0.85 }} />
                             </div>
                           </div>
                         );
@@ -376,14 +359,14 @@ export default function DashboardPage() {
               </Card>
 
               {/* Recently Opened */}
-              <Card className="p-6 bg-white/[0.03] border-white/[0.07] animate-rise" style={{ animationDelay: '280ms' }}>
+              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '280ms' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-[15px] font-semibold tracking-tight flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-orange-400" />
+                  <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
+                    <Flame className="w-5 h-5 text-[#ff9f0a]" />
                     Recently Opened
                   </h2>
-                  <Link href="/projects?sortBy=lastOpened" className="text-[12px] text-white/40 hover:text-white flex items-center gap-1 transition-colors">
-                    View all <ArrowRight className="w-3 h-3" />
+                  <Link href="/projects?sortBy=lastOpened" className="text-[13px] text-[#2997ff] hover:text-white flex items-center gap-1 transition-colors">
+                    View all <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
                 {stats.recentlyOpened.length === 0 ? (
@@ -402,33 +385,33 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <div className="space-y-1">
-                    {stats.recentlyOpened.slice(0, 5).map((project, i) => {
-                      const lc = project.language ? getLanguageColor(project.language) : '#71717a';
+                    {stats.recentlyOpened.slice(0, 5).map((project) => {
+                      const lc = project.language ? getLanguageColor(project.language) : '#86868b';
                       return (
                         <Link
                           key={project.id}
                           href={`/projects/${project.id}`}
-                          className="group flex items-center gap-3.5 p-2.5 rounded-xl hover:bg-white/[0.04] transition-colors"
+                          className="group flex items-center gap-4 p-3 rounded-[14px] hover:bg-white/[0.05] transition-colors"
                         >
                           <div
-                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                            className="w-11 h-11 rounded-[12px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
                             style={{ backgroundColor: `${lc}14`, color: lc }}
                           >
-                            <FolderOpen className="w-4 h-4" />
+                            <FolderOpen className="w-5 h-5" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-[13.5px] font-medium truncate group-hover:text-white transition-colors">{project.name}</span>
+                              <span className="text-[15px] font-medium truncate group-hover:text-white transition-colors">{project.name}</span>
                               {project.language && (
                                 <span className="hidden sm:inline-flex w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: lc }} />
                               )}
                             </div>
-                            <p className="text-[11px] text-white/35 truncate font-mono">{project.path}</p>
+                            <p className="text-[12px] text-[#86868b] truncate font-mono">{project.path}</p>
                           </div>
-                          <span className="text-[11px] text-white/30 shrink-0 tabular-nums">
+                          <span className="text-[12px] text-white/30 shrink-0 tabular-nums">
                             {project.lastOpened ? formatRelativeTime(project.lastOpened) : '—'}
                           </span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-white/20 group-hover:text-white/60 opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0" />
+                          <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-white/60 opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0" />
                         </Link>
                       );
                     })}
@@ -438,29 +421,29 @@ export default function DashboardPage() {
 
               {/* Duplicates */}
               {stats.duplicateGroups.length > 0 && (
-                <Card className="p-6 bg-white/[0.03] border-orange-500/15 animate-rise" style={{ animationDelay: '340ms' }}>
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                      <AlertTriangle className="w-4 h-4 text-orange-400" />
+                <Card className="p-8 bg-white/[0.04] border-[#ff9f0a]/20 animate-rise" style={{ animationDelay: '340ms' }}>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-[12px] bg-[#ff9f0a]/10 flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-[#ff9f0a]" />
                     </div>
                     <div>
-                      <h2 className="text-[15px] font-semibold tracking-tight">Duplicate Projects</h2>
-                      <p className="text-[11px] text-white/40">Multiple local copies of the same remote</p>
+                      <h2 className="text-[20px] font-semibold tracking-tight">Duplicate Projects</h2>
+                      <p className="text-[12px] text-white/40">Multiple local copies of the same remote</p>
                     </div>
                   </div>
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {stats.duplicateGroups.slice(0, 3).map((group, idx) => (
-                      <div key={idx} className="p-3.5 rounded-xl bg-orange-500/[0.06] border border-orange-500/10">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <span className="text-[13px] text-white/80 font-medium">{group.count} copies of the same remote</span>
-                          <Badge variant="warning" className="text-[10px]">{group.gitRemote || 'Unknown'}</Badge>
+                      <div key={idx} className="p-4 rounded-[14px] bg-[#ff9f0a]/[0.06] border border-[#ff9f0a]/15">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[14px] text-white/80 font-medium">{group.count} copies of the same remote</span>
+                          <Badge variant="warning" className="text-[11px]">{group.gitRemote || 'Unknown'}</Badge>
                         </div>
                         <div className="space-y-1">
                           {group.projects.slice(0, 3).map((p) => (
                             <Link
                               key={p.id}
                               href={`/projects/${p.id}`}
-                              className="text-[12px] text-white/45 hover:text-orange-300 block truncate font-mono transition-colors"
+                              className="text-[13px] text-white/45 hover:text-[#ff9f0a] block truncate font-mono transition-colors"
                             >
                               {p.name} — {p.path}
                             </Link>
@@ -474,31 +457,29 @@ export default function DashboardPage() {
             </div>
 
             {/* Right — 1 col */}
-            <div className="col-span-3 lg:col-span-1 space-y-6">
+            <div className="col-span-3 lg:col-span-1 space-y-8">
               {/* Backup health */}
-              <Card className="p-6 bg-white/[0.03] border-white/[0.07] animate-rise" style={{ animationDelay: '250ms' }}>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <h2 className="text-[15px] font-semibold tracking-tight">Backup Health</h2>
-                    </div>
-                    <BackupRing percent={backupPercent} />
+              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '250ms' }}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-[12px] bg-[#30d158]/10 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-[#30d158]" />
                   </div>
-                  <div className="flex-1 space-y-2.5 min-w-0">
+                  <h2 className="text-[20px] font-semibold tracking-tight">Backup Health</h2>
+                </div>
+                <div className="flex items-center gap-6">
+                  <BackupRing percent={backupPercent} />
+                  <div className="flex-1 space-y-3 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-[12px] text-white/45">Protected</span>
-                      <span className="text-[13px] font-medium text-emerald-400">{stats.totalProjects - stats.projectsNeedingBackup.length}</span>
+                      <span className="text-[13px] text-[#86868b]">Protected</span>
+                      <span className="text-[15px] font-semibold text-[#30d158]">{stats.totalProjects - stats.projectsNeedingBackup.length}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[12px] text-white/45">At risk</span>
-                      <span className="text-[13px] font-medium text-amber-400">{stats.projectsNeedingBackup.length}</span>
+                      <span className="text-[13px] text-[#86868b]">At risk</span>
+                      <span className="text-[15px] font-semibold text-[#ff9f0a]">{stats.projectsNeedingBackup.length}</span>
                     </div>
-                    <div className="h-px bg-white/[0.06] my-1" />
-                    <div className="flex items-center gap-1.5 text-[11px] text-white/35">
-                      <FolderGit2 className="w-3 h-3" />
+                    <div className="hairline my-1" />
+                    <div className="flex items-center gap-2 text-[12px] text-white/35">
+                      <FolderGit2 className="w-3.5 h-3.5" />
                       {stats.totalProjects} total projects
                     </div>
                   </div>
@@ -506,33 +487,33 @@ export default function DashboardPage() {
               </Card>
 
               {/* Needs backup */}
-              <Card className="p-6 bg-white/[0.03] border-white/[0.07] animate-rise" style={{ animationDelay: '310ms' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-[15px] font-semibold tracking-tight flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse-soft" />
+              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '310ms' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-[#ff9f0a] animate-pulse-soft" />
                     Needs Backup
                   </h2>
-                  <span className="w-6 h-6 rounded-lg bg-white/[0.05] flex items-center justify-center text-[11px] text-white/50 tabular-nums">
+                  <span className="w-7 h-7 rounded-[10px] bg-white/[0.06] flex items-center justify-center text-[12px] text-white/60 tabular-nums">
                     {stats.projectsNeedingBackup.length}
                   </span>
                 </div>
                 {stats.projectsNeedingBackup.length === 0 ? (
-                  <p className="text-[13px] text-white/40 py-2">All projects are protected. Nice badge for your shelf. ✨</p>
+                  <p className="text-[14px] text-[#86868b] py-2">All projects are protected. Nice work. ✨</p>
                 ) : (
                   <div className="space-y-1">
                     {stats.projectsNeedingBackup.slice(0, 4).map((project) => (
                       <Link
                         key={project.id}
                         href={`/projects/${project.id}`}
-                        className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/[0.04] group transition-colors"
+                        className="flex items-center justify-between p-3 rounded-[12px] hover:bg-white/[0.05] group transition-colors"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-medium truncate">{project.name}</p>
-                          <p className="text-[10.5px] text-amber-400/70 mt-0.5">
+                          <p className="text-[14px] font-medium truncate">{project.name}</p>
+                          <p className="text-[12px] text-[#ff9f0a]/70 mt-0.5">
                             {project.lastBackup ? `Last backup ${formatRelativeTime(project.lastBackup)}` : 'Never backed up'}
                           </p>
                         </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-white/20 group-hover:text-amber-400/60 shrink-0 ml-2 transition-all opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0" />
+                        <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-[#ff9f0a]/70 shrink-0 ml-2 transition-all opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0" />
                       </Link>
                     ))}
                   </div>
@@ -540,29 +521,29 @@ export default function DashboardPage() {
               </Card>
 
               {/* Quick actions */}
-              <Card className="p-6 bg-white/[0.03] border-white/[0.07] animate-rise" style={{ animationDelay: '370ms' }}>
-                <h2 className="text-[15px] font-semibold tracking-tight mb-4">Quick Actions</h2>
+              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '370ms' }}>
+                <h2 className="text-[20px] font-semibold tracking-tight mb-5">Quick Actions</h2>
                 <div className="space-y-2">
-                  <Link href="/import" className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                      <Plus className="w-4 h-4 text-violet-300" />
+                  <Link href="/import" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">
+                    <div className="w-10 h-10 rounded-[12px] bg-[#0a84ff]/10 flex items-center justify-center">
+                      <Plus className="w-5 h-5 text-[#2997ff]" />
                     </div>
-                    <span className="text-[13px] font-medium">Import Project</span>
-                    <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
+                    <span className="text-[15px] font-medium">Import Project</span>
+                    <ChevronRight className="w-4 h-4 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
                   </Link>
-                  <Link href="/projects?isFavorite=true" className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                      <Star className="w-4 h-4 text-amber-300" />
+                  <Link href="/projects?isFavorite=true" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">
+                    <div className="w-10 h-10 rounded-[12px] bg-[#ffd60a]/10 flex items-center justify-center">
+                      <Star className="w-5 h-5 text-[#ffd60a]" />
                     </div>
-                    <span className="text-[13px] font-medium">View Favorites</span>
-                    <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
+                    <span className="text-[15px] font-medium">View Favorites</span>
+                    <ChevronRight className="w-4 h-4 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
                   </Link>
-                  <Link href="/collections" className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.05] transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
-                      <Boxes className="w-4 h-4 text-sky-300" />
+                  <Link href="/collections" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">
+                    <div className="w-10 h-10 rounded-[12px] bg-[#64d2ff]/10 flex items-center justify-center">
+                      <Boxes className="w-5 h-5 text-[#64d2ff]" />
                     </div>
-                    <span className="text-[13px] font-medium">Manage Collections</span>
-                    <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
+                    <span className="text-[15px] font-medium">Manage Collections</span>
+                    <ChevronRight className="w-4 h-4 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
                   </Link>
                 </div>
               </Card>

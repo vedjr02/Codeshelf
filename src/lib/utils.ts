@@ -130,7 +130,6 @@ export function parseSearchQuery(query: string): {
   filters: Record<string, string>;
 } {
   const filters: Record<string, string> = {};
-  const parts: string[] = [];
 
   const filterRegex = /(\w+):(\S+)/g;
   let match;

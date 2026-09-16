@@ -2,12 +2,17 @@
 
 @layer base {
   :root {
-    --background: 0 0% 6%;
-    --foreground: 0 0% 100%;
+    --accent: #2997ff;
+    --background: #000000;
+    --foreground: #f5f5f7;
+    --text-secondary: #86868b;
+    --surface: rgba(255, 255, 255, 0.05);
+    --surface-raised: #151517;
+    --border: rgba(255, 255, 255, 0.12);
   }
 
   * {
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   html {
@@ -16,23 +21,28 @@
   }
 
   body {
-    background-color: #09090b;
-    color: #fff;
+    background-color: #000;
+    /* Apple-style system font stack — SF Pro on macOS/iOS, Inter fallbacks elsewhere */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+      "Helvetica Neue", "Segoe UI", Roboto, Inter, sans-serif;
+    color: #f5f5f7;
+    font-size: 16px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139, 92, 246, 0.07), transparent);
-    font-feature-settings: 'ss01' on, 'cv01' on, 'cv11' on;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
     text-rendering: optimizeLegibility;
   }
 
   ::selection {
-    background-color: rgba(139, 92, 246, 0.3);
+    background-color: rgba(41, 151, 255, 0.35);
     color: #fff;
   }
 
-  /* Custom scrollbar — slim, rounded, blended */
+  /* Slim, blended scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
@@ -40,52 +50,67 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 9999px;
-    border: 2px solid transparent;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    border: 3px solid transparent;
     background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.3);
     background-clip: content-box;
   }
 }
 
-/* Glass surfaces */
+/* ============================================================
+   Apple-style primitives
+   ============================================================ */
+
+/* Frosted surfaces */
 .glass {
-  background-color: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .glass-hover:hover {
-  background-color: rgba(255, 255, 255, 0.07);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
-/* Text gradient helpers */
+/* Raised card */
+.surface-card {
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+}
+
+.surface-card:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Hairline divider */
+.hairline {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Accent text */
+.text-accent { color: #2997ff; }
+
+/* Subtle text gradient for headings (kept soft, Apple-esque) */
 .text-gradient {
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  background-image: linear-gradient(135deg, #c4b5fd 0%, #f0abfc 50%, #818cf8 100%);
+  background-image: linear-gradient(135deg, #f5f5f7 0%, #2997ff 120%);
 }
 
-.text-gradient-warm {
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  background-image: linear-gradient(135deg, #fcd34d 0%, #fb923c 50%, #f87171 100%);
-}
+/* ============================================================
+   Motion
+   ============================================================ */
 
-/* Soft glow shadow helpers */
-.glow-violet { box-shadow: 0 0 24px -6px rgba(139, 92, 246, 0.35); }
-.glow-cyan { box-shadow: 0 0 24px -6px rgba(56, 189, 248, 0.3); }
-.glow-pink { box-shadow: 0 0 24px -6px rgba(236, 72, 153, 0.3); }
-.glow-emerald { box-shadow: 0 0 24px -6px rgba(52, 211, 153, 0.3); }
-.glow-amber { box-shadow: 0 0 24px -6px rgba(251, 191, 36, 0.3); }
-
-/* Entrance animations */
 .animate-rise {
   animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -94,35 +119,35 @@
   animation: fade 0.4s ease both;
 }
 
-.animate-float {
-  animation: float 7s ease-in-out infinite;
-}
-
 .animate-pulse-soft {
   animation: pulse-soft 3s ease-in-out infinite;
 }
 
-/* Stagger delay helper — children rise in sequentially */
+.animate-float {
+  animation: float 7s ease-in-out infinite;
+}
+
+/* Stagger — children rise in sequentially */
 .stagger > * {
   animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .stagger > *:nth-child(1) { animation-delay: 0s; }
-.stagger > *:nth-child(2) { animation-delay: 0.05s; }
-.stagger > *:nth-child(3) { animation-delay: 0.1s; }
-.stagger > *:nth-child(4) { animation-delay: 0.15s; }
-.stagger > *:nth-child(5) { animation-delay: 0.2s; }
-.stagger > *:nth-child(6) { animation-delay: 0.25s; }
-.stagger > *:nth-child(7) { animation-delay: 0.3s; }
-.stagger > *:nth-child(8) { animation-delay: 0.35s; }
-.stagger > *:nth-child(9) { animation-delay: 0.4s; }
-.stagger > *:nth-child(10) { animation-delay: 0.45s; }
+.stagger > *:nth-child(2) { animation-delay: 0.04s; }
+.stagger > *:nth-child(3) { animation-delay: 0.08s; }
+.stagger > *:nth-child(4) { animation-delay: 0.12s; }
+.stagger > *:nth-child(5) { animation-delay: 0.16s; }
+.stagger > *:nth-child(6) { animation-delay: 0.2s; }
+.stagger > *:nth-child(7) { animation-delay: 0.24s; }
+.stagger > *:nth-child(8) { animation-delay: 0.28s; }
+.stagger > *:nth-child(9) { animation-delay: 0.32s; }
+.stagger > *:nth-child(10) { animation-delay: 0.36s; }
 
 /* Language dot glow */
 .lang-dot {
   box-shadow: 0 0 8px -2px currentColor;
 }
 
-/* Hide scrollbar for horizontal chip rows */
+/* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -134,7 +159,7 @@
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -149,10 +174,10 @@
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-8px); }
 }
 
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.45; }
 }

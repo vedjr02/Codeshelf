@@ -45,30 +45,30 @@ export default function SettingsPage() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="p-8 max-w-3xl mx-auto">
+        <div className="p-10 max-w-5xl mx-auto">
           {/* Header */}
-          <div className="mb-8 animate-rise">
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-400/80 flex items-center gap-1.5 mb-2">
-              <Settings className="w-3.5 h-3.5" />
+          <div className="mb-10 animate-rise">
+            <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
+              <Settings className="w-4 h-4" />
               Configuration
             </span>
-            <h1 className="text-[28px] font-semibold tracking-tight leading-none mb-1">
+            <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
               Settings
             </h1>
-            <p className="text-[13px] text-white/40 mt-1">
+            <p className="text-[16px] text-[#86868b] mt-1">
               Configure backup storage, preferences, and app behavior
             </p>
           </div>
 
-          <div className="space-y-5 stagger">
+          <div className="space-y-7 stagger">
             {/* Backup Settings */}
-            <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
+            <Card className="p-7 bg-white/[0.04] border-white/[0.1]">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
                   <Cloud className="w-4 h-4 text-sky-400" />
                 </div>
                 <div>
-                  <h3 className="text-[14px] font-semibold tracking-tight">Backup Storage</h3>
+                  <h3 className="text-[16px] font-semibold tracking-tight">Backup Storage</h3>
                   <p className="text-[11.5px] text-white/35">Configure where project backups are stored</p>
                 </div>
               </div>
@@ -125,13 +125,13 @@ export default function SettingsPage() {
             </Card>
 
             {/* Preferences */}
-            <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
+            <Card className="p-7 bg-white/[0.04] border-white/[0.1]">
               <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                  <Palette className="w-4 h-4 text-violet-400" />
+                <div className="w-8 h-8 rounded-lg bg-[#2997ff]/10 flex items-center justify-center">
+                  <Palette className="w-4 h-4 text-[#2997ff]" />
                 </div>
                 <div>
-                  <h3 className="text-[14px] font-semibold tracking-tight">Preferences</h3>
+                  <h3 className="text-[16px] font-semibold tracking-tight">Preferences</h3>
                   <p className="text-[11.5px] text-white/35">Customize app behavior and appearance</p>
                 </div>
               </div>
@@ -163,13 +163,13 @@ export default function SettingsPage() {
             </Card>
 
             {/* About */}
-            <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
+            <Card className="p-7 bg-white/[0.04] border-white/[0.1]">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                   <Info className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="text-[14px] font-semibold tracking-tight">About</h3>
+                  <h3 className="text-[16px] font-semibold tracking-tight">About</h3>
                   <p className="text-[11.5px] text-white/35">App version and system info</p>
                 </div>
               </div>
@@ -193,7 +193,7 @@ export default function SettingsPage() {
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="rounded-xl gap-1.5 bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80 hover:from-violet-500/80 hover:to-fuchsia-500/80 text-white shadow-lg shadow-violet-900/40 disabled:opacity-50"
+                className="rounded-full gap-1.5 px-7 disabled:opacity-50"
               >
                 {saved ? (
                   <>

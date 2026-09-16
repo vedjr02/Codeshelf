@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,6 +29,14 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+interface FileNode {
+  name: string;
+  type: 'file' | 'directory';
+  path: string;
+  size?: number;
+  children?: FileNode[];
+}
+
 interface ProjectDetail {
   id: string;
   name: string;
@@ -53,13 +61,7 @@ interface ProjectDetail {
   dependencies: Array<{ name: string; version: string; type: string }>;
   devDependencies: Array<{ name: string; version: string; type: string }>;
   scripts: Array<{ name: string; command: string }>;
-  fileStructure: Array<{
-    name: string;
-    type: 'file' | 'directory';
-    path: string;
-    size?: number;
-    children?: any[];
-  }>;
+  fileStructure: FileNode[];
   backups: Array<{
     id: string;
     provider: string;
@@ -74,7 +76,6 @@ interface ProjectDetail {
 
 function ProjectDetailContent() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -84,13 +85,8 @@ function ProjectDetailContent() {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
 
-  useEffect(() => {
-    fetchProject();
-  }, [id]);
-
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await fetch(`/api/projects/${id}`);
       if (!res.ok) throw new Error('Project not found');
       const data = await res.json();
@@ -101,7 +97,11 @@ function ProjectDetailContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchProject();
+  }, [fetchProject]);
 
   const handleSaveNotes = async () => {
     try {
@@ -206,46 +206,46 @@ function ProjectDetailContent() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-8 py-8">
+        <div className="max-w-7xl mx-auto px-10 py-10">
           {/* Back */}
           <Link
             href="/projects"
-            className="inline-flex items-center gap-2 text-[13px] text-white/45 hover:text-white mb-6 transition-colors"
+            className="inline-flex items-center gap-2 text-[14px] text-[#86868b] hover:text-white mb-7 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Projects
           </Link>
 
           {/* Hero Header */}
-          <div className="relative mb-8 animate-rise">
-            <div className="flex items-start gap-5">
+          <div className="relative mb-10 animate-rise">
+            <div className="flex items-start gap-6">
               {/* Language tile */}
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${languageColor}16` }}
+                className="w-[68px] h-[68px] rounded-[18px] flex items-center justify-center shrink-0 border border-white/[0.08]"
+                style={{ backgroundColor: `${languageColor}14` }}
               >
-                <span className="w-4 h-4 rounded-full lang-dot" style={{ color: languageColor, backgroundColor: languageColor }} />
+                <span className="w-5 h-5 rounded-full lang-dot" style={{ color: languageColor, backgroundColor: languageColor }} />
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-[28px] font-semibold tracking-tight leading-none truncate">{project.name}</h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-[40px] font-semibold tracking-tight leading-none truncate">{project.name}</h1>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={handleToggleFavorite}
-                    className="h-9 w-9 shrink-0"
+                    className="h-11 w-11 shrink-0"
                   >
-                    <Star className={`w-5 h-5 transition-colors ${project.isFavorite ? 'text-yellow-400 fill-yellow-400' : 'text-white/30 hover:text-yellow-400/60'}`} />
+                    <Star className={`w-6 h-6 transition-colors ${project.isFavorite ? 'text-[#ffd60a] fill-[#ffd60a]' : 'text-white/30 hover:text-[#ffd60a]/60'}`} />
                   </Button>
                 </div>
-                <p className="text-[12px] text-white/35 font-mono truncate mt-1">{project.path}</p>
+                <p className="text-[13px] text-[#86868b] font-mono truncate mt-1.5">{project.path}</p>
 
                 {/* Tags */}
                 {project.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-4">
                     {project.tags.map((tag) => (
-                      <span key={tag.id} className="px-2 py-0.5 text-[10.5px] rounded-full" style={{ backgroundColor: `${tag.color}18`, color: tag.color }}>
+                      <span key={tag.id} className="px-3 py-1 text-[12px] rounded-full" style={{ backgroundColor: `${tag.color}18`, color: tag.color }}>
                         {tag.name}
                       </span>
                     ))}
@@ -256,25 +256,25 @@ function ProjectDetailContent() {
               <Button
                 onClick={handleCreateBackup}
                 disabled={isBackingUp}
-                size="sm"
-                className="shrink-0 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600/80 to-teal-600/80 hover:from-emerald-500/80 hover:to-teal-500/80 text-white shadow-lg shadow-emerald-900/30 disabled:opacity-50"
+                size="lg"
+                className="shrink-0 gap-2 rounded-full px-6 bg-[#30d158] text-white hover:bg-[#40e368] disabled:opacity-50 shadow-[0_4px_20px_-4px_rgba(48,209,88,0.5)]"
               >
-                <FolderSync className="w-4 h-4" />
+                <FolderSync className="w-[18px] h-[18px]" />
                 {isBackingUp ? 'Backing up...' : 'Create Backup'}
               </Button>
             </div>
 
             {/* Stat chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 stagger">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 stagger">
               {[
                 { label: 'Language', value: project.language || 'Unknown', color: languageColor },
-                { label: 'Size', value: formatBytes(project.size), color: '#94a3b8' },
-                { label: 'Git', value: project.isGitRepo ? project.gitBranch || 'main' : 'Not a repo', color: project.isGitRepo ? '#94a3b8' : '#525252' },
-                { label: 'Modified', value: formatRelativeTime(project.lastModified), color: '#94a3b8' },
+                { label: 'Size', value: formatBytes(project.size), color: '#f5f5f7' },
+                { label: 'Git', value: project.isGitRepo ? project.gitBranch || 'main' : 'Not a repo', color: project.isGitRepo ? '#f5f5f7' : '#86868b' },
+                { label: 'Modified', value: formatRelativeTime(project.lastModified), color: '#f5f5f7' },
               ].map((chip) => (
-                <div key={chip.label} className="px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-white/30 mb-1">{chip.label}</div>
-                  <div className="text-[13px] font-medium truncate" style={{ color: chip.color }}>{chip.value}</div>
+                <div key={chip.label} className="px-5 py-4 rounded-[14px] bg-white/[0.04] border border-white/[0.08]">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/40 mb-1.5">{chip.label}</div>
+                  <div className="text-[15px] font-semibold truncate" style={{ color: chip.color }}>{chip.value}</div>
                 </div>
               ))}
             </div>
@@ -282,20 +282,20 @@ function ProjectDetailContent() {
 
           {/* Backup Progress */}
           {isBackingUp && (
-            <Card className="mb-6 p-4 border-emerald-500/20 bg-emerald-500/5">
-              <div className="flex items-center justify-between text-[13px] mb-2">
-                <span className="text-emerald-300">Backing up project...</span>
-                <span className="text-emerald-400 tabular-nums">{backupProgress}%</span>
+            <Card className="mb-8 p-5 border-[#30d158]/25 bg-[#30d158]/[0.06]">
+              <div className="flex items-center justify-between text-[14px] mb-3">
+                <span className="text-[#30d158]">Backing up project...</span>
+                <span className="text-[#30d158] tabular-nums">{backupProgress}%</span>
               </div>
-              <Progress value={backupProgress} className="h-1.5" />
+              <Progress value={backupProgress} className="h-2" />
             </Card>
           )}
 
           {/* Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="bg-white/[0.04] rounded-xl border border-white/[0.07] p-1 gap-0.5">
+          <Tabs defaultValue="overview" className="space-y-8">
+            <TabsList className="bg-white/[0.05] border border-white/[0.08] p-1.5 gap-1 w-full sm:w-auto">
               {['overview','readme','files','dependencies','backups','notes'].map((tab) => (
-                <TabsTrigger key={tab} value={tab} className="rounded-lg text-[13px] capitalize data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50 transition-colors">
+                <TabsTrigger key={tab} value={tab} className="rounded-[10px] text-[14px] capitalize px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50 transition-colors">
                   {tab}
                 </TabsTrigger>
               ))}
@@ -304,8 +304,8 @@ function ProjectDetailContent() {
             {/* Overview */}
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-2 gap-5">
-                <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
-                  <h3 className="text-[13px] font-semibold mb-4 tracking-tight">Project Info</h3>
+                <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+                  <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Info</h3>
                   <div className="space-y-3">
                     {[
                       { k: 'Framework', v: project.framework },
@@ -330,8 +330,8 @@ function ProjectDetailContent() {
                   </div>
                 </Card>
 
-                <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
-                  <h3 className="text-[13px] font-semibold mb-4 tracking-tight">Scripts</h3>
+                <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+                  <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Scripts</h3>
                   {project.scripts.length === 0 ? (
                     <p className="text-[12px] text-white/35">No scripts found</p>
                   ) : (
@@ -350,7 +350,7 @@ function ProjectDetailContent() {
 
             {/* README */}
             <TabsContent value="readme">
-              <Card className="p-6 bg-white/[0.03] border-white/[0.07]">
+              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
                 {project.readme ? (
                   <pre className="whitespace-pre-wrap font-sans text-[13.5px] text-white/75 leading-relaxed">{project.readme}</pre>
                 ) : (
@@ -365,8 +365,8 @@ function ProjectDetailContent() {
 
             {/* Files */}
             <TabsContent value="files">
-              <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
-                <h3 className="text-[13px] font-semibold mb-4 tracking-tight">File Tree</h3>
+              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+                <h3 className="text-[15px] font-semibold mb-4 tracking-tight">File Tree</h3>
                 {project.fileStructure.length === 0 ? (
                   <p className="text-[12px] text-white/35">No files found</p>
                 ) : (
@@ -390,8 +390,8 @@ function ProjectDetailContent() {
                   { label: 'Dependencies', items: project.dependencies, empty: 'No dependencies' },
                   { label: 'Dev Dependencies', items: project.devDependencies, empty: 'No dev dependencies' },
                 ].map(({ label, items, empty }) => (
-                  <Card key={label} className="p-5 bg-white/[0.03] border-white/[0.07]">
-                    <h3 className="text-[13px] font-semibold mb-4 tracking-tight">{label} ({items.length})</h3>
+                  <Card key={label} className="p-5 bg-white/[0.04] border-white/[0.1]">
+                    <h3 className="text-[15px] font-semibold mb-4 tracking-tight">{label} ({items.length})</h3>
                     {items.length === 0 ? <p className="text-[12px] text-white/35">{empty}</p> : (
                       <div className="space-y-0.5 max-h-80 overflow-auto no-scrollbar">
                         {items.map((dep) => (
@@ -409,9 +409,9 @@ function ProjectDetailContent() {
 
             {/* Backups */}
             <TabsContent value="backups">
-              <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
+              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
                 <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-[13px] font-semibold tracking-tight">Backups</h3>
+                  <h3 className="text-[15px] font-semibold tracking-tight">Backups</h3>
                   <Button size="sm" variant="secondary" onClick={handleCreateBackup} disabled={isBackingUp} className="rounded-xl gap-1">
                     <Plus className="w-3.5 h-3.5" />
                     New Backup
@@ -449,15 +449,15 @@ function ProjectDetailContent() {
 
             {/* Notes */}
             <TabsContent value="notes">
-              <Card className="p-5 bg-white/[0.03] border-white/[0.07]">
-                <h3 className="text-[13px] font-semibold mb-4 tracking-tight">Project Notes</h3>
+              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+                <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Notes</h3>
                 <div className="space-y-4">
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add personal notes, TODOs, architecture decisions..."
                     rows={8}
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/25 focus:border-white/[0.15] transition-all font-mono resize-y"
+                    className="w-full rounded-[12px] border border-white/[0.1] bg-white/[0.04] p-4 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#2997ff]/25 focus:border-white/[0.2] transition-all font-mono resize-y"
                   />
                   <Button onClick={handleSaveNotes} disabled={isSavingNotes} size="sm" className="rounded-xl gap-1.5">
                     {isSavingNotes ? 'Saving...' : 'Save Notes'}

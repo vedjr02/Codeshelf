@@ -12,7 +12,6 @@ import { formatBytes, getLanguageColor } from '@/lib/utils';
 import {
   FolderSearch,
   CheckCircle,
-  Plus,
   ArrowLeft,
   FolderGit2,
   GitBranch,
@@ -112,7 +111,7 @@ export default function ImportPage() {
       }
 
       router.push('/projects');
-    } catch (err) {
+    } catch {
       setError('Failed to import some projects');
       setIsImporting(false);
     }
@@ -122,32 +121,32 @@ export default function ImportPage() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="p-8 max-w-4xl mx-auto">
+        <div className="p-10 max-w-7xl mx-auto">
           {/* Back */}
           <Link
             href="/projects"
-            className="inline-flex items-center gap-2 text-[13px] text-white/45 hover:text-white mb-6 transition-colors"
+            className="inline-flex items-center gap-2 text-[14px] text-[#86868b] hover:text-white mb-7 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Projects
           </Link>
 
           {/* Header */}
-          <div className="mb-8 animate-rise">
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-400/80 flex items-center gap-1.5 mb-2">
-              <Scan className="w-3.5 h-3.5" />
+          <div className="mb-10 animate-rise">
+            <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#30d158]/80 flex items-center gap-1.5 mb-3">
+              <Scan className="w-4 h-4" />
               Import
             </span>
-            <h1 className="text-[28px] font-semibold tracking-tight leading-none mb-1">
+            <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
               Import Projects
             </h1>
-            <p className="text-[13px] text-white/40 mt-1">
+            <p className="text-[16px] text-[#86868b] mt-1">
               Scan a folder to discover and import your coding projects
             </p>
           </div>
 
           {/* Scan Form */}
-          <Card className="mb-8 p-5 bg-white/[0.03] border-white/[0.07] animate-rise" style={{ animationDelay: '0.05s' }}>
+          <Card className="mb-8 p-7 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '0.05s' }}>
             <form onSubmit={handleScan} className="flex gap-3">
               <div className="relative flex-1">
                 <FolderSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/35" />
@@ -156,14 +155,14 @@ export default function ImportPage() {
                   placeholder="/Users/username/Developer or C:\Users\username\Projects"
                   value={folderPath}
                   onChange={(e) => setFolderPath(e.target.value)}
-                  className="pl-9 bg-white/[0.045] border-white/[0.08] text-[13px] rounded-xl font-mono"
+                  className="pl-10 font-mono"
                   disabled={isScanning || isImporting}
                 />
               </div>
               <Button
                 type="submit"
                 disabled={isScanning || isImporting || !folderPath.trim()}
-                className="shrink-0 gap-1.5 rounded-xl bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80 hover:from-violet-500/80 hover:to-fuchsia-500/80 text-white shadow-lg shadow-violet-900/40 disabled:opacity-50"
+                className="shrink-0 gap-2 rounded-full px-6 disabled:opacity-50"
               >
                 <Scan className="w-4 h-4" />
                 {isScanning ? 'Scanning...' : 'Scan Folder'}
@@ -180,12 +179,12 @@ export default function ImportPage() {
 
           {/* Import Progress */}
           {isImporting && (
-            <Card className="mb-8 p-5 border-violet-500/20 bg-violet-500/5 animate-fade">
-              <div className="flex items-center justify-between text-[13px] mb-2">
-                <span className="text-violet-300">Importing projects...</span>
-                <span className="text-violet-400 tabular-nums">{importProgress}%</span>
+            <Card className="mb-8 p-5 border-[#2997ff]/25 bg-[#2997ff]/[0.06] animate-fade">
+              <div className="flex items-center justify-between text-[14px] mb-3">
+                <span className="text-[#2997ff]">Importing projects...</span>
+                <span className="text-[#2997ff] tabular-nums">{importProgress}%</span>
               </div>
-              <Progress value={importProgress} className="h-1.5" />
+              <Progress value={importProgress} className="h-2" />
             </Card>
           )}
 
@@ -211,9 +210,9 @@ export default function ImportPage() {
                     onClick={handleImport}
                     disabled={selectedPaths.size === 0 || isImporting}
                     size="sm"
-                    className="rounded-xl gap-1.5 bg-gradient-to-r from-emerald-600/80 to-teal-600/80 hover:from-emerald-500/80 hover:to-teal-500/80 text-white shadow-lg shadow-emerald-900/30 disabled:opacity-50"
+                    className="rounded-full gap-1.5 bg-[#30d158] hover:bg-[#40e368] text-white disabled:opacity-50 shadow-[0_4px_20px_-4px_rgba(48,209,88,0.5)]"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Sparkles className="w-4 h-4" />
                     Import ({selectedPaths.size})
                   </Button>
                 </div>
@@ -230,15 +229,15 @@ export default function ImportPage() {
                       onClick={() => !isImporting && handleToggleSelect(project.path)}
                       className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                         isSelected
-                          ? 'border-violet-500/30 bg-violet-500/[0.06]'
-                          : 'border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/[0.1]'
+                          ? 'border-[#2997ff]/35 bg-[#2997ff]/[0.07]'
+                          : 'border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.06] hover:border-white/[0.16]'
                       }`}
                     >
                       {/* Checkbox */}
                       <div className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
                         isSelected
-                          ? 'bg-violet-500 border-violet-500 text-white'
-                          : 'border-white/20'
+                          ? 'bg-[#0a84ff] border-[#0a84ff] text-white'
+                          : 'border-white/25'
                       }`}>
                         {isSelected && <CheckCircle className="w-3.5 h-3.5" />}
                       </div>

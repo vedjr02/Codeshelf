@@ -1,7 +1,6 @@
 'use client';
 
 import { formatBytes, formatRelativeTime, getLanguageColor, getFrameworkColor } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
   Star,
@@ -11,6 +10,7 @@ import {
   MoreHorizontal,
   FolderSync,
   ShieldCheck,
+  FolderOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -51,83 +51,84 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
   const hasBackup = project.backups && project.backups.length > 0;
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 hover:-translate-y-[2px] hover:bg-white/[0.05] bg-white/[0.03] border-white/[0.07] hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/20">
+    <Card className="group relative overflow-hidden transition-all duration-300 hover:-translate-y-[2px] hover:bg-white/[0.06] bg-white/[0.04] border-white/[0.1] hover:border-white/[0.18] hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]">
       {/* Top accent — language-colored hairline */}
       <div
-        className="absolute inset-x-0 top-0 h-px opacity-60 transition-all duration-300"
+        className="absolute inset-x-0 top-0 h-[2px] opacity-70 transition-all duration-300"
         style={{
           background: project.language
             ? `linear-gradient(90deg, transparent, ${languageColor}, transparent)`
-            : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)',
+            : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
         }}
       />
 
-      <div className="flex items-start justify-between gap-4 p-5">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            {/* Language icon tile */}
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mr-0.5 transition-transform group-hover:scale-105"
-              style={{ backgroundColor: `${languageColor}14` }}
-            >
-              <span className="w-2.5 h-2.5 rounded-full lang-dot" style={{ color: languageColor, backgroundColor: languageColor }} />
+      <div className="flex flex-col p-6 min-h-[210px]">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2.5">
+              {/* Language icon tile */}
+              <div
+                className="w-11 h-11 rounded-[12px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+                style={{ backgroundColor: `${languageColor}14` }}
+              >
+                <FolderOpen className="w-[22px] h-[22px]" style={{ color: languageColor }} />
+              </div>
+
+              <Link
+                href={`/projects/${project.id}`}
+                className="text-[18px] font-semibold tracking-tight hover:text-white/80 transition-colors truncate"
+              >
+                {project.name}
+              </Link>
+              {project.isFavorite && (
+                <Star className="w-[18px] h-[18px] text-[#ffd60a] fill-[#ffd60a] shrink-0" />
+              )}
+              {project.isArchived && (
+                <Archive className="w-[18px] h-[18px] text-white/40 shrink-0" />
+              )}
             </div>
 
-            <Link
-              href={`/projects/${project.id}`}
-              className="text-[15px] font-semibold tracking-tight hover:text-white/80 transition-colors truncate"
-            >
-              {project.name}
-            </Link>
-            {project.isFavorite && (
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 shrink-0" />
-            )}
-            {project.isArchived && (
-              <Archive className="w-4 h-4 text-white/40 shrink-0" />
-            )}
+            <p className="text-[12px] text-[#86868b] truncate font-mono mb-3.5">
+              {project.path}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 mb-3.5">
+              {project.language && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium"
+                  style={{ backgroundColor: `${languageColor}14`, color: languageColor }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: languageColor }} />
+                  {project.language}
+                </span>
+              )}
+              {project.framework && (
+                <span
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium"
+                  style={{
+                    backgroundColor: frameworkColor ? `${frameworkColor}10` : 'rgba(255,255,255,0.06)',
+                    color: frameworkColor ? frameworkColor : 'rgba(255,255,255,0.6)',
+                  }}
+                >
+                  {project.framework}
+                </span>
+              )}
+              {hasBackup && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium bg-[#30d158]/10 text-[#30d158]">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Backed up
+                </span>
+              )}
+            </div>
           </div>
+        </div>
 
-          <p className="text-[11px] text-white/35 truncate font-mono mb-3 pl-[10.5rem] -ml-[2.5rem] max-w-full hidden sm:block md:block lg:block xl:block">
-            {project.path}
-          </p>
-          <p className="text-[11px] text-white/35 truncate font-mono mb-3 sm:hidden">
-            {project.path}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            {project.language && (
-              <span
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium"
-                style={{ backgroundColor: `${languageColor}12`, color: languageColor }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: languageColor }} />
-                {project.language}
-              </span>
-            )}
-            {project.framework && (
-              <span
-                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                style={{
-                  backgroundColor: frameworkColor ? `${frameworkColor}10` : 'rgba(255,255,255,0.06)',
-                  color: frameworkColor ? frameworkColor : 'rgba(255,255,255,0.6)',
-                }}
-              >
-                {project.framework}
-              </span>
-            )}
-            {hasBackup && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-400">
-                <ShieldCheck className="w-3 h-3" />
-                Backed up
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-[11px] text-white/35">
+        <div className="mt-auto">
+          <div className="flex items-center gap-5 text-[12px] text-white/40 pt-4 border-t border-white/[0.06]">
             <span className="tabular-nums">{formatBytes(project.size)}</span>
             {project.isGitRepo && project.gitBranch && (
-              <span className="flex items-center gap-1">
-                <GitBranch className="w-3 h-3" />
+              <span className="flex items-center gap-1.5">
+                <GitBranch className="w-3.5 h-3.5" />
                 {project.gitBranch}
               </span>
             )}
@@ -136,9 +137,9 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
                 href={project.gitRemote}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-white/60 transition-colors"
+                className="flex items-center gap-1.5 hover:text-white/60 transition-colors"
               >
-                <ExternalLink className="w-3 h-3" />
+                <ExternalLink className="w-3.5 h-3.5" />
                 Remote
               </a>
             )}
@@ -146,11 +147,11 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
           </div>
 
           {project.tags && project.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
+            <div className="flex flex-wrap gap-2 mt-3.5">
               {project.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag.id}
-                  className="px-2 py-0.5 text-[10.5px] rounded-full"
+                  className="px-2.5 py-1 text-[11px] rounded-full"
                   style={{
                     backgroundColor: `${tag.color}18`,
                     color: tag.color,
@@ -160,7 +161,7 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
                 </span>
               ))}
               {project.tags.length > 3 && (
-                <span className="text-[11px] text-white/35">
+                <span className="text-[12px] text-white/35">
                   +{project.tags.length - 3}
                 </span>
               )}
@@ -168,17 +169,18 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Actions */}
+        <div className="absolute top-5 right-5 flex items-center gap-1.5 shrink-0">
           {!hasBackup && (
-            <span title="Needs backup" className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-orange-500/10 text-orange-400/80">
-              <FolderSync className="w-3 h-3" />
+            <span title="Needs backup" className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-[#ff9f0a]/10 text-[#ff9f0a]/80">
+              <FolderSync className="w-3.5 h-3.5" />
             </span>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-white/50 hover:text-white">
-                <MoreHorizontal className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="h-9 w-9 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-white/50 hover:text-white">
+                <MoreHorizontal className="w-[18px] h-[18px]" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -191,7 +193,7 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete?.(project.id)}
-                className="text-red-400 focus:text-red-400"
+                className="text-[#ff453a] focus:text-[#ff453a]"
               >
                 Remove from library
               </DropdownMenuItem>

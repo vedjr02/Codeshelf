@@ -134,7 +134,7 @@ function detectLanguageFromFiles(files: string[], extensions: Record<string, num
 
 function detectFramework(files: string[], dependencies: string[]): string | null {
   // Check for framework-specific config files
-  for (const [key, indicator] of Object.entries(FRAMEWORK_INDICATORS)) {
+  for (const [, indicator] of Object.entries(FRAMEWORK_INDICATORS)) {
     if (indicator.files.some(f => files.includes(f))) {
       return indicator.framework;
     }

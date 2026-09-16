@@ -15,9 +15,11 @@ export interface BackupProvider {
 // Local Storage Provider (Default)
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { createWriteStream, createReadStream } from 'fs';
+import { createWriteStream } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+// archiver v8 is ESM-only and exports classes, not a callable factory
+import { ZipArchive } from 'archiver';
 
 const execAsync = promisify(exec);
 
@@ -59,8 +61,6 @@ export class LocalBackupProvider implements BackupProvider {
 
     return new Promise((resolve, reject) => {
       const output = createWriteStream(destinationPath);
-      // archiver v8 is ESM-only and exports classes, not a callable factory
-      const { ZipArchive } = require('archiver');
       const archive = new ZipArchive({ zlib: { level: 6 } });
 
       let fileCount = 0;
@@ -129,10 +129,12 @@ export class LocalBackupProvider implements BackupProvider {
 }
 
 // Provider Factory
-export function getBackupProvider(type: string, config?: Record<string, any>): BackupProvider {
+export function getBackupProvider(type: string, config?: Record<string, unknown>): BackupProvider {
   switch (type) {
     case 'local':
-      return new LocalBackupProvider(config?.basePath);
+      return new LocalBackupProvider(
+        typeof config?.basePath === 'string' ? config.basePath : undefined
+      );
     case 'google-drive':
       // Future: return new GoogleDriveProvider(config);
       throw new Error('Google Drive provider not yet implemented');

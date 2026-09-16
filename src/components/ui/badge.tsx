@@ -5,16 +5,16 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors',
+  'inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors',
   {
     variants: {
       variant: {
-        default: 'bg-white/10 text-white',
-        secondary: 'bg-white/5 text-white/70',
-        success: 'bg-green-500/20 text-green-400',
-        warning: 'bg-yellow-500/20 text-yellow-400',
-        danger: 'bg-red-500/20 text-red-400',
-        info: 'bg-blue-500/20 text-blue-400',
+        default: 'bg-white/[0.08] text-white',
+        secondary: 'bg-white/[0.05] text-white/70',
+        success: 'bg-[#30d158]/15 text-[#30d158]',
+        warning: 'bg-[#ffd60a]/15 text-[#ffd60a]',
+        danger: 'bg-[#ff453a]/15 text-[#ff453a]',
+        info: 'bg-[#0a84ff]/15 text-[#0a84ff]',
         language: 'bg-white/10 text-white/80',
       },
     },

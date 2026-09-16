@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,11 +41,7 @@ export default function CollectionsPage() {
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [colRes, tagRes] = await Promise.all([
@@ -65,7 +61,11 @@ export default function CollectionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleCreateCollection = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,42 +128,42 @@ export default function CollectionsPage() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 overflow-auto">
-        <div className="p-8 max-w-4xl mx-auto">
+        <div className="p-10 max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8 animate-rise">
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-sky-400/80 flex items-center gap-1.5 mb-2">
-              <FolderKanban className="w-3.5 h-3.5" />
+          <div className="mb-10 animate-rise">
+            <span className="text-[12px] font-medium uppercase tracking-[0.14em] text-[#2997ff]/80 flex items-center gap-1.5 mb-3">
+              <FolderKanban className="w-4 h-4" />
               Organize
             </span>
-            <h1 className="text-[28px] font-semibold tracking-tight leading-none mb-1">
+            <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
               Collections & Tags
             </h1>
-            <p className="text-[13px] text-white/40 mt-1">
+            <p className="text-[16px] text-[#86868b] mt-1">
               Group related projects and build custom taxonomies
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {/* Collections Section */}
             <div className="animate-rise" style={{ animationDelay: '0.05s' }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[15px] font-semibold tracking-tight flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                    <Folder className="w-3.5 h-3.5 text-violet-400" />
+                <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-[10px] bg-[#2997ff]/10 flex items-center justify-center">
+                    <Folder className="w-4 h-4 text-[#2997ff]" />
                   </div>
                   Collections
                 </h2>
 
                 <Dialog open={isCreatingCollection} onOpenChange={setIsCreatingCollection}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="secondary" className="rounded-xl gap-1 text-[12.5px]">
+                    <Button size="sm" variant="secondary" className="rounded-full gap-1">
                       <Plus className="w-3.5 h-3.5" />
                       New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#141416] border-white/10">
+                  <DialogContent className="bg-[#151517] border-white/[0.12]">
                     <DialogHeader>
-                      <DialogTitle className="text-[16px] tracking-tight">Create Collection</DialogTitle>
+                      <DialogTitle className="text-[18px] tracking-tight">Create Collection</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleCreateCollection} className="space-y-4 mt-4">
                       <div>
@@ -184,7 +184,7 @@ export default function CollectionsPage() {
                           className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]"
                         />
                       </div>
-                      <Button type="submit" className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white">
+                      <Button type="submit" className="w-full rounded-[12px] bg-[#0a84ff] text-white">
                         Create Collection
                       </Button>
                     </form>
@@ -204,8 +204,8 @@ export default function CollectionsPage() {
                     <Link key={col.id} href={`/projects?collectionId=${col.id}`}>
                       <div className="group flex items-center justify-between p-4 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
-                            <Folder className="w-4 h-4 text-violet-400" />
+                          <div className="w-11 h-11 rounded-[12px] bg-[#2997ff]/10 flex items-center justify-center shrink-0">
+                            <Folder className="w-[18px] h-[18px] text-[#2997ff]" />
                           </div>
                           <div>
                             <h3 className="text-[13.5px] font-semibold tracking-tight">{col.name}</h3>
@@ -230,23 +230,23 @@ export default function CollectionsPage() {
             {/* Tags Section */}
             <div className="animate-rise" style={{ animationDelay: '0.1s' }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[15px] font-semibold tracking-tight flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-fuchsia-500/10 flex items-center justify-center">
-                    <Tag className="w-3.5 h-3.5 text-fuchsia-400" />
+                <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-[10px] bg-[#ff9f0a]/10 flex items-center justify-center">
+                    <Tag className="w-4 h-4 text-[#ff9f0a]" />
                   </div>
                   Tags
                 </h2>
 
                 <Dialog open={isCreatingTag} onOpenChange={setIsCreatingTag}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="secondary" className="rounded-xl gap-1 text-[12.5px]">
+                    <Button size="sm" variant="secondary" className="rounded-full gap-1">
                       <Plus className="w-3.5 h-3.5" />
                       New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#141416] border-white/10">
+                  <DialogContent className="bg-[#151517] border-white/[0.12]">
                     <DialogHeader>
-                      <DialogTitle className="text-[16px] tracking-tight">Create Tag</DialogTitle>
+                      <DialogTitle className="text-[18px] tracking-tight">Create Tag</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleCreateTag} className="space-y-4 mt-4">
                       <div>
@@ -258,7 +258,7 @@ export default function CollectionsPage() {
                           className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]"
                         />
                       </div>
-                      <Button type="submit" className="w-full rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white">
+                      <Button type="submit" className="w-full rounded-[12px] bg-[#0a84ff] text-white">
                         Create Tag
                       </Button>
                     </form>

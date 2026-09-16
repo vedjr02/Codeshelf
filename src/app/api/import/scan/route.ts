@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectProject } from '@/lib/project-detector';
+import type { DetectedProject } from '@/lib/project-detector';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find all potential projects
-    const foundProjects: any[] = [];
+    const foundProjects: DetectedProject[] = [];
 
     async function scanDirectory(dirPath: string, currentDepth: number): Promise<void> {
       if (currentDepth > maxDepth) return;
@@ -54,20 +55,7 @@ export async function POST(request: NextRequest) {
           // Detect project details
           const detected = await detectProject(dirPath);
           if (detected) {
-            foundProjects.push({
-              path: dirPath,
-              name: detected.name,
-              language: detected.language,
-              framework: detected.framework,
-              packageManager: detected.packageManager,
-              isGitRepo: detected.isGitRepo,
-              gitRemote: detected.gitRemote,
-              size: detected.size,
-              hasPackageJson: detected.hasPackageJson,
-              hasRequirements: detected.hasRequirements,
-              hasCargo: detected.hasCargo,
-              hasGoMod: detected.hasGoMod,
-            });
+            foundProjects.push(detected);
           }
         }
 
