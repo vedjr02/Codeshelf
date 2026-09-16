@@ -108,7 +108,7 @@ export default function SettingsPage() {
             <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
               Settings
             </h1>
-            <p className="text-[16px] text-[#86868b] mt-1">
+            <p className="text-[16px] text-[#9a9aa3] mt-1">
               Configure backup storage, preferences, and app behavior
             </p>
           </div>
@@ -122,7 +122,7 @@ export default function SettingsPage() {
 
           <div className="space-y-7 stagger">
             {/* Backup Settings */}
-            <Card className="p-7 bg-white/[0.04] border-white/[0.1]">
+            <Card className="p-7 bg-white/[0.06] border-white/[0.13]">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
                   <Cloud className="w-4 h-4 text-sky-400" />
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                     value={backupPath}
                     onChange={(e) => setBackupPath(e.target.value)}
                     placeholder="/path/to/backups"
-                    className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px] font-mono"
+                    className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px] font-mono"
                   />
                   <p className="text-[11px] text-white/30 mt-1.5">Local directory where project backups will be stored</p>
                 </div>
@@ -147,10 +147,10 @@ export default function SettingsPage() {
                 <div>
                   <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Storage Provider</label>
                   <Select value={defaultProvider} onValueChange={setDefaultProvider}>
-                    <SelectTrigger className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]">
+                    <SelectTrigger className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#141416] border-white/10">
+                    <SelectContent className="bg-[#1f1f23] border-white/[0.14]">
                       <SelectItem value="local">
                         <span className="flex items-center gap-2">
                           <HardDrive className="w-3.5 h-3.5 text-white/40" />
@@ -185,7 +185,7 @@ export default function SettingsPage() {
             </Card>
 
             {/* Preferences */}
-            <Card className="p-7 bg-white/[0.04] border-white/[0.1]">
+            <Card className="p-7 bg-white/[0.06] border-white/[0.13]">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-[#2997ff]/10 flex items-center justify-center">
                   <Palette className="w-4 h-4 text-[#2997ff]" />
@@ -223,7 +223,7 @@ export default function SettingsPage() {
             </Card>
 
             {/* About */}
-            <Card className="p-7 bg-white/[0.04] border-white/[0.1]">
+            <Card className="p-7 bg-white/[0.06] border-white/[0.13]">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                   <Info className="w-4 h-4 text-emerald-400" />

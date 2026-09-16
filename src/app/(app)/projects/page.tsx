@@ -211,7 +211,7 @@ function ProjectsContent() {
               <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
                 All Projects
               </h1>
-              <p className="text-[16px] text-[#86868b]">
+              <p className="text-[16px] text-[#9a9aa3]">
                 {projects.length} {projects.length === 1 ? 'project' : 'projects'} in your library
               </p>
             </div>
@@ -226,7 +226,7 @@ function ProjectsContent() {
           {/* Active collection/tag context banner */}
           {hasActiveContextFilters && (
             <div className="flex items-center gap-2.5 mb-5 animate-fade">
-              <span className="text-[13px] text-[#86868b]">Filtered by</span>
+              <span className="text-[13px] text-[#9a9aa3]">Filtered by</span>
               {collectionId && collectionName && (
                 <button
                   onClick={() => setCollectionId('')}
@@ -253,7 +253,7 @@ function ProjectsContent() {
           {/* Filters & Search */}
           <div className="flex flex-wrap items-center gap-3 mb-8 animate-rise" style={{ animationDelay: '0.05s' }}>
             <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#86868b]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#9a9aa3]" />
               <Input
                 type="text"
                 placeholder="Search by name, language, tag..."
@@ -294,7 +294,7 @@ function ProjectsContent() {
               className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
                 filterFavorite
                   ? 'bg-[#ffd60a]/15 border-[#ffd60a]/30 text-[#ffd60a]'
-                  : 'bg-white/[0.05] border-white/[0.1] text-white/60 hover:text-white hover:border-white/[0.2]'
+                  : 'bg-white/[0.05] border-white/[0.13] text-white/60 hover:text-white hover:border-white/[0.2]'
               }`}
             >
               <Star className="w-4 h-4" />
@@ -306,7 +306,7 @@ function ProjectsContent() {
               className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
                 filterArchived
                   ? 'bg-[#0a84ff]/15 border-[#0a84ff]/30 text-[#2997ff]'
-                  : 'bg-white/[0.05] border-white/[0.1] text-white/60 hover:text-white hover:border-white/[0.2]'
+                  : 'bg-white/[0.05] border-white/[0.13] text-white/60 hover:text-white hover:border-white/[0.2]'
               }`}
             >
               <Archive className="w-4 h-4" />

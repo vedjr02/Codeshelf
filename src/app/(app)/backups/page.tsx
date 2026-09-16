@@ -154,43 +154,43 @@ export default function BackupsPage() {
             Protection
           </span>
           <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">Backups</h1>
-          <p className="text-[16px] text-[#86868b] mt-1">
+          <p className="text-[16px] text-[#9a9aa3] mt-1">
             Every snapshot across your library — create, restore, and clean up.
           </p>
         </div>
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-5 mb-8 stagger">
-          <Card className="p-5 bg-white/[0.04] border-white/[0.1]">
+          <Card className="p-5 bg-white/[0.06] border-white/[0.13]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-[12px] bg-[#30d158]/10 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5 text-[#30d158]" />
               </div>
               <div>
                 <div className="text-[24px] font-semibold tabular-nums leading-none">{completed}</div>
-                <div className="text-[12px] text-[#86868b] mt-1.5">Completed</div>
+                <div className="text-[12px] text-[#9a9aa3] mt-1.5">Completed</div>
               </div>
             </div>
           </Card>
-          <Card className="p-5 bg-white/[0.04] border-white/[0.1]">
+          <Card className="p-5 bg-white/[0.06] border-white/[0.13]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-[12px] bg-[#2997ff]/10 flex items-center justify-center shrink-0">
                 <HardDrive className="w-5 h-5 text-[#2997ff]" />
               </div>
               <div>
                 <div className="text-[24px] font-semibold tabular-nums leading-none">{formatBytes(totalSize)}</div>
-                <div className="text-[12px] text-[#86868b] mt-1.5">Storage used</div>
+                <div className="text-[12px] text-[#9a9aa3] mt-1.5">Storage used</div>
               </div>
             </div>
           </Card>
-          <Card className="p-5 bg-white/[0.04] border-white/[0.1]">
+          <Card className="p-5 bg-white/[0.06] border-white/[0.13]">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${failed > 0 ? 'bg-[#ff453a]/10' : 'bg-white/[0.06]'}`}>
                 <AlertTriangle className={`w-5 h-5 ${failed > 0 ? 'text-[#ff453a]' : 'text-white/30'}`} />
               </div>
               <div>
                 <div className="text-[24px] font-semibold tabular-nums leading-none">{failed}</div>
-                <div className="text-[12px] text-[#86868b] mt-1.5">Failed</div>
+                <div className="text-[12px] text-[#9a9aa3] mt-1.5">Failed</div>
               </div>
             </div>
           </Card>
@@ -199,7 +199,7 @@ export default function BackupsPage() {
         {/* Search */}
         {backups.length > 0 && (
           <div className="relative mb-6 animate-rise" style={{ animationDelay: '0.1s' }}>
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#86868b]" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#9a9aa3]" />
             <Input
               type="text"
               placeholder="Filter by project, path, or status..."
@@ -245,7 +245,7 @@ export default function BackupsPage() {
               return (
                 <Card
                   key={backup.id}
-                  className="p-5 bg-white/[0.04] border-white/[0.08] hover:border-white/[0.14] transition-all"
+                  className="p-5 bg-white/[0.06] border-white/[0.11] hover:border-white/[0.14] transition-all"
                 >
                   <div className="flex items-center gap-4">
                     {/* Project tile */}
@@ -333,7 +333,7 @@ export default function BackupsPage() {
 
       {/* Restore dialog */}
       <Dialog open={restoreTarget !== null} onOpenChange={(open) => !open && setRestoreTarget(null)}>
-        <DialogContent className="max-w-[440px] bg-[#161618] border-white/[0.12] rounded-[18px]">
+        <DialogContent className="max-w-[440px] bg-[#1f1f23] border-white/[0.14] rounded-[18px]">
           <DialogHeader>
             <DialogTitle className="text-[17px] font-semibold tracking-tight">
               Restore {restoreTarget?.project.name}

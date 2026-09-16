@@ -79,7 +79,7 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
     : user?.email?.[0]?.toUpperCase();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-72 bg-black/70 backdrop-blur-2xl saturate-150 border-r border-white/[0.08] flex flex-col z-20">
+    <aside className="fixed left-0 top-0 h-screen w-72 bg-[#15151b]/90 backdrop-blur-2xl saturate-150 border-r border-white/[0.13] flex flex-col z-20">
       {/* Logo */}
       <div className="px-6 pt-7 pb-6">
         <Link href="/" className="flex items-center gap-3 group" onClick={onNavigate}>
@@ -87,11 +87,11 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
             <div className="w-11 h-11 rounded-[14px] bg-white/[0.08] border border-white/10 flex items-center justify-center group-hover:bg-white/[0.12] transition-colors duration-200">
               <FolderGit2 className="w-5 h-5 text-[#2997ff]" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#30d158] border-2 border-black" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#30d158] border-2 border-[#101014]" />
           </div>
           <div className="flex flex-col leading-tight">
             <span className="text-[17px] font-semibold tracking-tight">CodeShelf</span>
-            <span className="text-[12px] text-[#86868b] mt-0.5">Project Library</span>
+            <span className="text-[12px] text-[#9a9aa3] mt-0.5">Project Library</span>
           </div>
         </Link>
       </div>
@@ -104,11 +104,11 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
           className="relative group w-full text-left"
         >
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b] group-hover:text-[#2997ff] transition-colors" />
-            <div className="h-11 pl-10 pr-12 rounded-[12px] bg-white/[0.06] border border-white/[0.1] flex items-center text-[14px] text-white/35 group-hover:bg-white/[0.09] group-hover:border-white/[0.16] transition-colors">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9aa3] group-hover:text-[#2997ff] transition-colors" />
+            <div className="h-11 pl-10 pr-12 rounded-[12px] bg-white/[0.06] border border-white/[0.13] flex items-center text-[14px] text-white/35 group-hover:bg-white/[0.09] group-hover:border-white/[0.16] transition-colors">
               Search projects
             </div>
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#86868b] border border-white/10 rounded-md px-1.5 py-0.5 font-sans hidden sm:block">
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#9a9aa3] border border-white/10 rounded-md px-1.5 py-0.5 font-sans hidden sm:block">
               ⌘K
             </kbd>
           </div>
@@ -119,7 +119,7 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
       <nav className="flex-1 overflow-y-auto no-scrollbar px-3">
         {navSections.map((section) => (
           <div key={section.label} className="mb-6">
-            <div className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+            <div className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9a9aa3]">
               {section.label}
             </div>
             <div className="space-y-1">
@@ -135,13 +135,13 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
                       'group flex items-center gap-3 px-3.5 py-2.5 rounded-[12px] text-[14px] font-medium transition-all duration-200 relative',
                       isActive
                         ? 'text-white bg-white/[0.08]'
-                        : 'text-[#86868b] hover:text-white hover:bg-white/[0.05]'
+                        : 'text-[#9a9aa3] hover:text-white hover:bg-white/[0.05]'
                     )}
                   >
                     <Icon
                       className={cn(
                         'w-[18px] h-[18px] relative transition-colors',
-                        isActive ? 'text-[#2997ff]' : 'text-[#86868b] group-hover:text-white'
+                        isActive ? 'text-[#2997ff]' : 'text-[#9a9aa3] group-hover:text-white'
                       )}
                     />
                     <span className="relative">{item.label}</span>
@@ -173,13 +173,13 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
       </nav>
 
       {/* Footer */}
-      <div className="px-4 pb-6 pt-4 border-t border-white/[0.08]">
+      <div className="px-4 pb-6 pt-4 border-t border-white/[0.11]">
         {/* Backup health — real data, links to /backups */}
         {ticker && (
           <Link
             href="/backups"
             onClick={onNavigate}
-            className="block rounded-[14px] bg-white/[0.04] border border-white/[0.08] p-3.5 mb-3 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all group"
+            className="block rounded-[14px] bg-white/[0.06] border border-white/[0.11] p-3.5 mb-3 hover:bg-white/[0.06] hover:border-white/[0.14] transition-all group"
           >
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 rounded-[10px] bg-[#30d158]/10 flex items-center justify-center shrink-0">
@@ -189,7 +189,7 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
                 <span className="text-[13px] font-semibold text-white/80">
                   {ticker.projectsNeedingBackup === 0 ? 'Library Protected' : `${ticker.projectsNeedingBackup} need backup`}
                 </span>
-                <span className="text-[11px] text-[#86868b] group-hover:text-white/50 transition-colors">
+                <span className="text-[11px] text-[#9a9aa3] group-hover:text-white/50 transition-colors">
                   {ticker.totalProjects} {ticker.totalProjects === 1 ? 'project' : 'projects'} · view backups
                 </span>
               </div>
@@ -208,7 +208,7 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
         )}
 
         {/* User block */}
-        <div className="rounded-[14px] bg-white/[0.04] border border-white/[0.08] p-3 flex items-center gap-3">
+        <div className="rounded-[14px] bg-white/[0.06] border border-white/[0.11] p-3 flex items-center gap-3">
           {authResolved && user ? (
             <>
               <div className="w-9 h-9 rounded-full bg-[#2997ff]/15 border border-[#2997ff]/25 flex items-center justify-center text-[12.5px] font-semibold text-[#2997ff] shrink-0">
@@ -216,7 +216,7 @@ export function Sidebar({ user, authResolved, onLogout, isLoggingOut, onNavigate
               </div>
               <div className="flex-1 min-w-0 leading-tight">
                 <p className="text-[13px] font-medium truncate">{user.name || user.email.split('@')[0]}</p>
-                <p className="text-[11px] text-[#86868b] truncate">{user.email}</p>
+                <p className="text-[11px] text-[#9a9aa3] truncate">{user.email}</p>
               </div>
               <button
                 onClick={onLogout}

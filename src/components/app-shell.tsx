@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade"
             onClick={() => setMobileOpen(false)}
           />
           <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in-right">
@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main column */}
       <div className="md:pl-0">
         {/* Mobile topbar */}
-        <div className="sticky top-0 z-40 md:hidden flex items-center gap-3 h-14 px-4 bg-black/75 backdrop-blur-xl border-b border-white/[0.06]">
+        <div className="sticky top-0 z-40 md:hidden flex items-center gap-3 h-14 px-4 bg-[#101014]/85 backdrop-blur-xl border-b border-white/[0.08]">
           <button
             onClick={() => setMobileOpen(true)}
             className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"

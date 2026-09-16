@@ -220,7 +220,7 @@ function ProjectDetailContent() {
           {/* Back */}
           <Link
             href="/projects"
-            className="inline-flex items-center gap-2 text-[14px] text-[#86868b] hover:text-white mb-7 transition-colors"
+            className="inline-flex items-center gap-2 text-[14px] text-[#9a9aa3] hover:text-white mb-7 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Projects
@@ -231,7 +231,7 @@ function ProjectDetailContent() {
             <div className="flex items-start gap-6">
               {/* Language tile */}
               <div
-                className="w-[68px] h-[68px] rounded-[18px] flex items-center justify-center shrink-0 border border-white/[0.08]"
+                className="w-[68px] h-[68px] rounded-[18px] flex items-center justify-center shrink-0 border border-white/[0.11]"
                 style={{ backgroundColor: `${languageColor}14` }}
               >
                 <span className="w-5 h-5 rounded-full lang-dot" style={{ color: languageColor, backgroundColor: languageColor }} />
@@ -249,7 +249,7 @@ function ProjectDetailContent() {
                     <Star className={`w-6 h-6 transition-colors ${project.isFavorite ? 'text-[#ffd60a] fill-[#ffd60a]' : 'text-white/30 hover:text-[#ffd60a]/60'}`} />
                   </Button>
                 </div>
-                <p className="text-[13px] text-[#86868b] font-mono truncate mt-1.5">{project.path}</p>
+                <p className="text-[13px] text-[#9a9aa3] font-mono truncate mt-1.5">{project.path}</p>
 
                 {/* Tags */}
                 {project.tags.length > 0 && (
@@ -279,10 +279,10 @@ function ProjectDetailContent() {
               {[
                 { label: 'Language', value: project.language || 'Unknown', color: languageColor },
                 { label: 'Size', value: formatBytes(project.size), color: '#f5f5f7' },
-                { label: 'Git', value: project.isGitRepo ? project.gitBranch || 'main' : 'Not a repo', color: project.isGitRepo ? '#f5f5f7' : '#86868b' },
+                { label: 'Git', value: project.isGitRepo ? project.gitBranch || 'main' : 'Not a repo', color: project.isGitRepo ? '#f5f5f7' : '#9a9aa3' },
                 { label: 'Modified', value: formatRelativeTime(project.lastModified), color: '#f5f5f7' },
               ].map((chip) => (
-                <div key={chip.label} className="px-5 py-4 rounded-[14px] bg-white/[0.04] border border-white/[0.08]">
+                <div key={chip.label} className="px-5 py-4 rounded-[14px] bg-white/[0.06] border border-white/[0.11]">
                   <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/40 mb-1.5">{chip.label}</div>
                   <div className="text-[15px] font-semibold truncate" style={{ color: chip.color }}>{chip.value}</div>
                 </div>
@@ -303,7 +303,7 @@ function ProjectDetailContent() {
 
           {/* Tabs */}
           <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="bg-white/[0.05] border border-white/[0.08] p-1.5 gap-1 w-full sm:w-auto">
+            <TabsList className="bg-white/[0.05] border border-white/[0.11] p-1.5 gap-1 w-full sm:w-auto">
               {['overview','readme','files','dependencies','backups','notes'].map((tab) => (
                 <TabsTrigger key={tab} value={tab} className="rounded-[10px] text-[14px] capitalize px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50 transition-colors">
                   {tab}
@@ -314,7 +314,7 @@ function ProjectDetailContent() {
             {/* Overview */}
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-2 gap-5">
-                <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+                <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                   <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Info</h3>
                   <div className="space-y-3">
                     {[
@@ -340,14 +340,14 @@ function ProjectDetailContent() {
                   </div>
                 </Card>
 
-                <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+                <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                   <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Scripts</h3>
                   {project.scripts.length === 0 ? (
                     <p className="text-[12px] text-white/35">No scripts found</p>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-auto no-scrollbar">
                       {project.scripts.map((script) => (
-                        <div key={script.name} className="p-2.5 rounded-lg bg-white/[0.04] font-mono text-[11.5px]">
+                        <div key={script.name} className="p-2.5 rounded-lg bg-white/[0.06] font-mono text-[11.5px]">
                           <div className="font-semibold text-white/80 mb-0.5">{script.name}</div>
                           <div className="text-white/40 truncate">{script.command}</div>
                         </div>
@@ -360,7 +360,7 @@ function ProjectDetailContent() {
 
             {/* README */}
             <TabsContent value="readme">
-              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                 {project.readme ? (
                   <pre className="whitespace-pre-wrap font-sans text-[13.5px] text-white/75 leading-relaxed">{project.readme}</pre>
                 ) : (
@@ -375,14 +375,14 @@ function ProjectDetailContent() {
 
             {/* Files */}
             <TabsContent value="files">
-              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                 <h3 className="text-[15px] font-semibold mb-4 tracking-tight">File Tree</h3>
                 {project.fileStructure.length === 0 ? (
                   <p className="text-[12px] text-white/35">No files found</p>
                 ) : (
                   <div className="space-y-0.5 font-mono text-[12.5px]">
                     {project.fileStructure.map((item) => (
-                      <div key={item.path} className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg hover:bg-white/[0.04] transition-colors">
+                      <div key={item.path} className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg hover:bg-white/[0.06] transition-colors">
                         {item.type === 'directory' ? <Folder className="w-4 h-4 text-sky-400 shrink-0" /> : <File className="w-4 h-4 text-white/30 shrink-0" />}
                         <span className="truncate">{item.name}</span>
                         {item.size && <span className="text-[11px] text-white/25 ml-auto tabular-nums shrink-0">{formatBytes(item.size)}</span>}
@@ -400,12 +400,12 @@ function ProjectDetailContent() {
                   { label: 'Dependencies', items: project.dependencies, empty: 'No dependencies' },
                   { label: 'Dev Dependencies', items: project.devDependencies, empty: 'No dev dependencies' },
                 ].map(({ label, items, empty }) => (
-                  <Card key={label} className="p-5 bg-white/[0.04] border-white/[0.1]">
+                  <Card key={label} className="p-5 bg-white/[0.06] border-white/[0.13]">
                     <h3 className="text-[15px] font-semibold mb-4 tracking-tight">{label} ({items.length})</h3>
                     {items.length === 0 ? <p className="text-[12px] text-white/35">{empty}</p> : (
                       <div className="space-y-0.5 max-h-80 overflow-auto no-scrollbar">
                         {items.map((dep) => (
-                          <div key={dep.name} className="flex justify-between py-2 px-2 rounded-lg hover:bg-white/[0.04] text-[12.5px]">
+                          <div key={dep.name} className="flex justify-between py-2 px-2 rounded-lg hover:bg-white/[0.06] text-[12.5px]">
                             <span className="font-mono truncate mr-3">{dep.name}</span>
                             <span className="text-white/35 font-mono tabular-nums shrink-0">{dep.version}</span>
                           </div>
@@ -419,7 +419,7 @@ function ProjectDetailContent() {
 
             {/* Backups */}
             <TabsContent value="backups">
-              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-[15px] font-semibold tracking-tight">Backups</h3>
                   <Button size="sm" variant="secondary" onClick={handleCreateBackup} disabled={isBackingUp} className="rounded-xl gap-1">
@@ -437,7 +437,7 @@ function ProjectDetailContent() {
                 ) : (
                   <div className="space-y-2.5">
                     {project.backups.map((backup) => (
-                      <div key={backup.id} className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.035] border border-white/[0.06] hover:border-white/[0.1] transition-colors">
+                      <div key={backup.id} className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.055] border border-white/[0.09] hover:border-white/[0.13] transition-colors">
                         <div className="flex items-center gap-3.5">
                           <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                             <CheckCircle className="w-4.5 h-4.5 text-emerald-400" />
@@ -459,7 +459,7 @@ function ProjectDetailContent() {
 
             {/* Notes */}
             <TabsContent value="notes">
-              <Card className="p-6 bg-white/[0.04] border-white/[0.1]">
+              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                 <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Notes</h3>
                 <div className="space-y-4">
                   <textarea
@@ -467,7 +467,7 @@ function ProjectDetailContent() {
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add personal notes, TODOs, architecture decisions..."
                     rows={8}
-                    className="w-full rounded-[12px] border border-white/[0.1] bg-white/[0.04] p-4 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#2997ff]/25 focus:border-white/[0.2] transition-all font-mono resize-y"
+                    className="w-full rounded-[12px] border border-white/[0.13] bg-white/[0.06] p-4 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#2997ff]/25 focus:border-white/[0.2] transition-all font-mono resize-y"
                   />
                   <Button onClick={handleSaveNotes} disabled={isSavingNotes} size="sm" className="rounded-xl gap-1.5">
                     {isSavingNotes ? 'Saving...' : 'Save Notes'}

@@ -51,7 +51,7 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
   const hasBackup = project.backups && project.backups.length > 0;
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 hover:-translate-y-[2px] hover:bg-white/[0.06] bg-white/[0.04] border-white/[0.1] hover:border-white/[0.18] hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]">
+    <Card className="group relative overflow-hidden transition-all duration-300 hover:-translate-y-[2px] hover:bg-white/[0.06] bg-white/[0.06] border-white/[0.13] hover:border-white/[0.18] hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)]">
       {/* Top accent — language-colored hairline */}
       <div
         className="absolute inset-x-0 top-0 h-[2px] opacity-70 transition-all duration-300"
@@ -124,7 +124,7 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
         </div>
 
         <div className="mt-auto">
-          <div className="flex items-center gap-5 text-[12px] text-white/40 pt-4 border-t border-white/[0.06]">
+          <div className="flex items-center gap-5 text-[12px] text-white/40 pt-4 border-t border-white/[0.09]">
             <span className="tabular-nums">{formatBytes(project.size)}</span>
             {project.isGitRepo && project.gitBranch && (
               <span className="flex items-center gap-1.5">

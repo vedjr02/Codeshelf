@@ -101,7 +101,7 @@ function StatCard({
   const count = useCountUp(value);
   return (
     <Card
-      className="relative overflow-hidden p-6 bg-white/[0.04] border-white/[0.1] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300 animate-rise"
+      className="relative overflow-hidden p-6 bg-white/[0.06] border-white/[0.13] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300 animate-rise"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between mb-5">
@@ -117,9 +117,9 @@ function StatCard({
         <span className="text-[40px] font-semibold tracking-tight leading-none tabular-nums">
           {count}
         </span>
-        {unit && <span className="text-[15px] text-[#86868b] font-medium">{unit}</span>}
+        {unit && <span className="text-[15px] text-[#9a9aa3] font-medium">{unit}</span>}
       </div>
-      <div className="text-[13px] text-[#86868b] mt-2 font-medium">{label}</div>
+      <div className="text-[13px] text-[#9a9aa3] mt-2 font-medium">{label}</div>
     </Card>
   );
 }
@@ -264,7 +264,7 @@ export default function DashboardPage() {
               <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
                 Welcome to <span className="text-gradient">CodeShelf</span>
               </h1>
-              <p className="text-[16px] text-[#86868b]">Your shelf is empty — let&apos;s fill it.</p>
+              <p className="text-[16px] text-[#9a9aa3]">Your shelf is empty — let&apos;s fill it.</p>
             </div>
           </div>
 
@@ -300,7 +300,7 @@ export default function DashboardPage() {
             ].map((step) => (
               <Card
                 key={step.step}
-                className="group relative overflow-hidden p-7 bg-white/[0.04] border-white/[0.1] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300"
+                className="group relative overflow-hidden p-7 bg-white/[0.06] border-white/[0.13] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-5">
                   <div
@@ -317,7 +317,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <h3 className="text-[18px] font-semibold tracking-tight mb-2">{step.title}</h3>
-                <p className="text-[13.5px] text-[#86868b] leading-relaxed mb-6">{step.body}</p>
+                <p className="text-[13.5px] text-[#9a9aa3] leading-relaxed mb-6">{step.body}</p>
                 <Link href={step.href}>
                   <Button variant="secondary" size="sm" className="rounded-full gap-1.5 group-hover:bg-white/[0.12] transition-colors">
                     {step.cta}
@@ -359,13 +359,13 @@ export default function DashboardPage() {
               <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
                 {greeting}, <span className="text-gradient">Developer</span>
               </h1>
-              <p className="text-[16px] text-[#86868b]">
+              <p className="text-[16px] text-[#9a9aa3]">
                 Your project library at a glance
               </p>
             </div>
 
             <div className="flex items-center gap-4">
-              <Link href="/projects?sortBy=lastOpened" className="hidden md:flex items-center gap-2 text-[14px] text-[#86868b] hover:text-white transition-colors">
+              <Link href="/projects?sortBy=lastOpened" className="hidden md:flex items-center gap-2 text-[14px] text-[#9a9aa3] hover:text-white transition-colors">
                 <Clock className="w-4 h-4" />
                 Recently viewed
               </Link>
@@ -416,7 +416,7 @@ export default function DashboardPage() {
             {/* Left — 2 cols */}
             <div className="col-span-3 lg:col-span-2 space-y-8">
               {/* Language + Framework distribution */}
-              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '220ms' }}>
+              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '220ms' }}>
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-[20px] font-semibold tracking-tight">Tech Distribution</h2>
                   <span className="text-[12px] text-white/35 font-mono">{stats.languages.length} langs · {stats.frameworks.length} frameworks</span>
@@ -425,7 +425,7 @@ export default function DashboardPage() {
                   <div className="space-y-5">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-1">Languages</div>
                     {stats.languages.length === 0 ? (
-                      <p className="text-[14px] text-[#86868b]">No languages detected yet</p>
+                      <p className="text-[14px] text-[#9a9aa3]">No languages detected yet</p>
                     ) : (
                       stats.languages.slice(0, 6).map((l) => (
                         <LanguageBar key={l.language} name={l.language} count={l.count} max={langMax} />
@@ -435,7 +435,7 @@ export default function DashboardPage() {
                   <div className="space-y-5">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-1">Frameworks</div>
                     {stats.frameworks.length === 0 ? (
-                      <p className="text-[14px] text-[#86868b]">No frameworks detected yet</p>
+                      <p className="text-[14px] text-[#9a9aa3]">No frameworks detected yet</p>
                     ) : (
                       stats.frameworks.slice(0, 6).map((f) => {
                         const c = getFrameworkColor(f.framework) || '#2997ff';
@@ -458,7 +458,7 @@ export default function DashboardPage() {
               </Card>
 
               {/* Recently Opened */}
-              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '280ms' }}>
+              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '280ms' }}>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
                     <Flame className="w-5 h-5 text-[#ff9f0a]" />
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-1">
                     {stats.recentlyOpened.slice(0, 5).map((project) => {
-                      const lc = project.language ? getLanguageColor(project.language) : '#86868b';
+                      const lc = project.language ? getLanguageColor(project.language) : '#9a9aa3';
                       return (
                         <Link
                           key={project.id}
@@ -505,7 +505,7 @@ export default function DashboardPage() {
                                 <span className="hidden sm:inline-flex w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: lc }} />
                               )}
                             </div>
-                            <p className="text-[12px] text-[#86868b] truncate font-mono">{project.path}</p>
+                            <p className="text-[12px] text-[#9a9aa3] truncate font-mono">{project.path}</p>
                           </div>
                           <span className="text-[12px] text-white/30 shrink-0 tabular-nums">
                             {project.lastOpened ? formatRelativeTime(project.lastOpened) : '—'}
@@ -520,7 +520,7 @@ export default function DashboardPage() {
 
               {/* Duplicates */}
               {stats.duplicateGroups.length > 0 && (
-                <Card className="p-8 bg-white/[0.04] border-[#ff9f0a]/20 animate-rise" style={{ animationDelay: '340ms' }}>
+                <Card className="p-8 bg-white/[0.06] border-[#ff9f0a]/20 animate-rise" style={{ animationDelay: '340ms' }}>
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-10 h-10 rounded-[12px] bg-[#ff9f0a]/10 flex items-center justify-center">
                       <AlertTriangle className="w-5 h-5 text-[#ff9f0a]" />
@@ -558,7 +558,7 @@ export default function DashboardPage() {
             {/* Right — 1 col */}
             <div className="col-span-3 lg:col-span-1 space-y-8">
               {/* Backup health */}
-              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '250ms' }}>
+              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '250ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-[12px] bg-[#30d158]/10 flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5 text-[#30d158]" />
@@ -569,11 +569,11 @@ export default function DashboardPage() {
                   <BackupRing percent={backupPercent} />
                   <div className="flex-1 space-y-3 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-[#86868b]">Protected</span>
+                      <span className="text-[13px] text-[#9a9aa3]">Protected</span>
                       <span className="text-[15px] font-semibold text-[#30d158]">{stats.totalProjects - stats.projectsNeedingBackup.length}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-[#86868b]">At risk</span>
+                      <span className="text-[13px] text-[#9a9aa3]">At risk</span>
                       <span className="text-[15px] font-semibold text-[#ff9f0a]">{stats.projectsNeedingBackup.length}</span>
                     </div>
                     <div className="hairline my-1" />
@@ -586,7 +586,7 @@ export default function DashboardPage() {
               </Card>
 
               {/* Needs backup */}
-              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '310ms' }}>
+              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '310ms' }}>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
                     <span className="w-2 h-2 rounded-full bg-[#ff9f0a] animate-pulse-soft" />
@@ -597,7 +597,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 {stats.projectsNeedingBackup.length === 0 ? (
-                  <p className="text-[14px] text-[#86868b] py-2">All projects are protected. Nice work. ✨</p>
+                  <p className="text-[14px] text-[#9a9aa3] py-2">All projects are protected. Nice work. ✨</p>
                 ) : (
                   <div className="space-y-1">
                     {stats.projectsNeedingBackup.slice(0, 4).map((project) => (
@@ -620,7 +620,7 @@ export default function DashboardPage() {
               </Card>
 
               {/* Quick actions */}
-              <Card className="p-8 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '370ms' }}>
+              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '370ms' }}>
                 <h2 className="text-[20px] font-semibold tracking-tight mb-5">Quick Actions</h2>
                 <div className="space-y-2">
                   <Link href="/import" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">

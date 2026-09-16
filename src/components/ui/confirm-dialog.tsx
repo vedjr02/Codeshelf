@@ -43,7 +43,7 @@ export function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[400px] bg-[#161618] border-white/[0.12] rounded-[18px] p-6 gap-0">
+      <DialogContent className="max-w-[400px] bg-[#1f1f23] border-white/[0.14] rounded-[18px] p-6 gap-0">
         <DialogHeader className="space-y-0">
           <div className="flex items-start gap-3.5">
             <div

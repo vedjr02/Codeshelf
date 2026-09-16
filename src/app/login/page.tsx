@@ -70,14 +70,14 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-[19px] font-semibold tracking-tight">CodeShelf</span>
-              <span className="text-[12.5px] text-[#86868b]">Project Library</span>
+              <span className="text-[12.5px] text-[#9a9aa3]">Project Library</span>
             </div>
           </div>
 
           <h1 className="text-[32px] font-semibold tracking-tight leading-tight mb-2">
             {isRegister ? 'Create your account' : 'Welcome back'}
           </h1>
-          <p className="text-[15px] text-[#86868b] mb-8">
+          <p className="text-[15px] text-[#9a9aa3] mb-8">
             {isRegister
               ? 'One account for your entire project library.'
               : 'Sign in to your project library.'}
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 onClick={() => switchMode(m)}
                 className={cn(
                   'h-9 rounded-[9px] text-[13.5px] font-medium transition-all duration-200',
-                  mode === m ? 'bg-white/[0.1] text-white shadow-sm' : 'text-[#86868b] hover:text-white'
+                  mode === m ? 'bg-white/[0.1] text-white shadow-sm' : 'text-[#9a9aa3] hover:text-white'
                 )}
               >
                 {m === 'login' ? 'Sign In' : 'Create Account'}
@@ -207,7 +207,7 @@ export default function LoginPage() {
             <br />
             <span className="text-gradient">One shelf.</span>
           </h2>
-          <p className="text-[15px] text-[#86868b] leading-relaxed mb-12">
+          <p className="text-[15px] text-[#9a9aa3] leading-relaxed mb-12">
             Discover, organize, and protect the projects scattered across your
             machine — with local backups that never leave your control.
           </p>

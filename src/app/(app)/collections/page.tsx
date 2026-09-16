@@ -151,7 +151,7 @@ export default function CollectionsPage() {
             <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
               Collections & Tags
             </h1>
-            <p className="text-[16px] text-[#86868b] mt-1">
+            <p className="text-[16px] text-[#9a9aa3] mt-1">
               Group related projects and build custom taxonomies
             </p>
           </div>
@@ -174,7 +174,7 @@ export default function CollectionsPage() {
                       New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#151517] border-white/[0.12]">
+                  <DialogContent className="bg-[#1f1f23] border-white/[0.14]">
                     <DialogHeader>
                       <DialogTitle className="text-[18px] tracking-tight">Create Collection</DialogTitle>
                     </DialogHeader>
@@ -185,7 +185,7 @@ export default function CollectionsPage() {
                           placeholder="e.g. Work, Side Projects, Open Source"
                           value={newCollectionName}
                           onChange={(e) => setNewCollectionName(e.target.value)}
-                          className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]"
+                          className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]"
                         />
                       </div>
                       <div>
@@ -194,7 +194,7 @@ export default function CollectionsPage() {
                           placeholder="Optional description"
                           value={newCollectionDesc}
                           onChange={(e) => setNewCollectionDesc(e.target.value)}
-                          className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]"
+                          className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]"
                         />
                       </div>
                       <Button type="submit" className="w-full rounded-[12px] bg-[#0a84ff] text-white">
@@ -215,7 +215,7 @@ export default function CollectionsPage() {
                 <div className="space-y-2">
                   {collections.map((col) => (
                     <Link key={col.id} href={`/projects?collectionId=${col.id}`}>
-                      <div className="group flex items-center justify-between p-4 rounded-xl border border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer">
+                      <div className="group flex items-center justify-between p-4 rounded-xl border border-white/[0.13] bg-white/[0.05] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer">
                         <div className="flex items-center gap-3">
                           <div className="w-11 h-11 rounded-[12px] bg-[#2997ff]/10 flex items-center justify-center shrink-0">
                             <Folder className="w-[18px] h-[18px] text-[#2997ff]" />
@@ -257,7 +257,7 @@ export default function CollectionsPage() {
                       New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#151517] border-white/[0.12]">
+                  <DialogContent className="bg-[#1f1f23] border-white/[0.14]">
                     <DialogHeader>
                       <DialogTitle className="text-[18px] tracking-tight">Create Tag</DialogTitle>
                     </DialogHeader>
@@ -268,7 +268,7 @@ export default function CollectionsPage() {
                           placeholder="e.g. backend, mobile, machine-learning"
                           value={newTagName}
                           onChange={(e) => setNewTagName(e.target.value)}
-                          className="rounded-xl bg-white/[0.045] border-white/[0.08] text-[13px]"
+                          className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]"
                         />
                       </div>
                       <Button type="submit" className="w-full rounded-[12px] bg-[#0a84ff] text-white">
@@ -290,7 +290,7 @@ export default function CollectionsPage() {
                   {tags.map((tag) => (
                     <Link key={tag.id} href={`/projects?tagId=${tag.id}`}>
                       <div
-                        className="group flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.06] text-[13px] font-medium transition-all duration-200 hover:border-white/[0.12]"
+                        className="group flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.09] text-[13px] font-medium transition-all duration-200 hover:border-white/[0.12]"
                         style={{
                           backgroundColor: `${tag.color}0D`,
                           color: tag.color,

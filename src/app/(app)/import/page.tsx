@@ -133,7 +133,7 @@ export default function ImportPage() {
           {/* Back */}
           <Link
             href="/projects"
-            className="inline-flex items-center gap-2 text-[14px] text-[#86868b] hover:text-white mb-7 transition-colors"
+            className="inline-flex items-center gap-2 text-[14px] text-[#9a9aa3] hover:text-white mb-7 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Projects
@@ -148,13 +148,13 @@ export default function ImportPage() {
             <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
               Import Projects
             </h1>
-            <p className="text-[16px] text-[#86868b] mt-1">
+            <p className="text-[16px] text-[#9a9aa3] mt-1">
               Scan a folder to discover and import your coding projects
             </p>
           </div>
 
           {/* Scan Form */}
-          <Card className="mb-8 p-7 bg-white/[0.04] border-white/[0.1] animate-rise" style={{ animationDelay: '0.05s' }}>
+          <Card className="mb-8 p-7 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '0.05s' }}>
             <form onSubmit={handleScan} className="flex gap-3">
               <div className="relative flex-1">
                 <FolderSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/35" />
@@ -238,7 +238,7 @@ export default function ImportPage() {
                       className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                         isSelected
                           ? 'border-[#2997ff]/35 bg-[#2997ff]/[0.07]'
-                          : 'border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.06] hover:border-white/[0.16]'
+                          : 'border-white/[0.13] bg-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.16]'
                       }`}
                     >
                       {/* Checkbox */}

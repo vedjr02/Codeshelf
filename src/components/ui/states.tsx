@@ -18,7 +18,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
         {icon || <FolderOpen className="h-8 w-8 text-white/40" />}
       </div>
       <h3 className="text-[17px] font-semibold tracking-tight text-white mb-1.5">{title}</h3>
-      {description && <p className="text-[14px] text-[#86868b] mb-5 max-w-sm leading-relaxed">{description}</p>}
+      {description && <p className="text-[14px] text-[#9a9aa3] mb-5 max-w-sm leading-relaxed">{description}</p>}
       {action}
     </div>
   );
@@ -33,7 +33,7 @@ export function LoadingState({ message = 'Loading...', className }: LoadingState
   return (
     <div className={cn('flex flex-col items-center justify-center py-12', className)}>
       <Loader2 className="h-8 w-8 animate-spin text-[#2997ff] mb-4" />
-      <p className="text-[14px] text-[#86868b]">{message}</p>
+      <p className="text-[14px] text-[#9a9aa3]">{message}</p>
     </div>
   );
 }
