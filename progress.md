@@ -6,20 +6,28 @@
 
 ## How to run the app
 
-> The repo path contains a `:` and spaces (`/Users/ved/Documents 2/AI:ML Omni/codeshelf`) — plain `npx` **fails** with "Path contains delimiter (':')". Always invoke binaries directly:
+> The app is nested at `/Users/ved/Documents 2/Codeshelf/codeshelf`. Run commands from that directory:
 
 ```bash
+cd '/Users/ved/Documents 2/Codeshelf/codeshelf'
+
 # Run the dev server
-node node_modules/.bin/next dev
+npm run dev
+
+# Alternate port
+npm run dev -- --port 3001
 
 # Build
-node node_modules/.bin/next build
+npm run build
 
-# Prisma (only needed after schema changes)
-node node_modules/.bin/prisma db push
+# Prisma (needed after schema changes)
+npx prisma db push
 
-# Lint (zero errors as of this session)
-node node_modules/.bin/eslint src
+# Typecheck
+npx tsc --noEmit
+
+# Lint
+npm run lint
 ```
 
 - `.env` is local-only and **not** in git. It contains:
@@ -47,15 +55,16 @@ CodeShelf is a **local project library & backup manager** for developers:
 
 ## Design language (Apple.com-inspired)
 
-- **Typography:** SF Pro system font stack, large bold tight-tracked headlines
-- **Surface:** true-black canvas `#000`, frosted surfaces `rgba(255,255,255,0.04-0.08)`, hairline borders
-- **Accent:** Apple blue `#2997ff` (primary), `#30d158` green (backup/success), `#ff453a` red (danger)
-- **Layout:** window-sized, `w-72` sidebar inside AppShell, `max-w-7xl` content
-- Dark-only by design (theme toggle intentionally deferred)
+- **Typography:** SF Pro system stack, large sparse headlines, tight tracking, strong hierarchy
+- **Surface:** light neutral canvas `#f5f5f7`, translucent white materials, hairline black borders, restrained shadows
+- **Accent:** Apple blue `#0071e3` (primary), `#30d158` green (backup/success), `#ff453a` red (danger)
+- **Layout:** calm editorial spacing, fixed translucent utility sidebar, responsive content, `max-w-7xl` pages
+- Reduced motion is supported through `prefers-reduced-motion`
+- The visual system was moved from dark glassmorphism to a light Mac-utility aesthetic in the latest redesign pass
 
 ---
 
-## Current state (LAST UPDATED: 2026-09-16 evening — production-readiness pass)
+## Current state (LAST UPDATED: 2026-09-17 — UI/UX hardening, visual redesign, cloud groundwork)
 
 ### ✅ Done (this session — all verified end-to-end via curl + live UI)
 
@@ -81,27 +90,49 @@ CodeShelf is a **local project library & backup manager** for developers:
 - **Onboarding:** first-run dashboard shows a 3-step getting-started flow when library is empty
 
 **UX/system:**
-- `src/components/ui/toast.tsx` — global toasts (success/error/info) used on all mutations
+- `src/components/ui/toast.tsx` — global toasts (success/error/info) used on mutations
 - `src/components/ui/confirm-dialog.tsx` — replaces `window.confirm` (delete project/backup)
 - Projects search debounced 250ms; error states with retry on dashboard/projects/backups
-- Import reports per-project failures; sidebar footer shows real backup health from `/api/dashboard`
+- Import rows support keyboard selection with checkbox semantics and focus states
+- Sidebar navigation exposes `aria-current`; icon actions have accessible labels
+- Added reusable skeleton loading states and loading status announcements
+- Added global focus-visible styling and reduced-motion support
+- Removed duplicate initial fetch patterns from dashboard, collections, backups, and project detail
+- Added password visibility toggle to auth
+- Added responsive mobile layouts for project detail, dashboard, backups, collections, and import
+- Added safer Turbopack handling for user-selected filesystem paths
+- **Apple-inspired redesign:** light canvas, white layered cards, translucent sidebar, darker typography, restrained blue accent
 - ESLint: **0 errors, 0 warnings**; `next build` + `tsc --noEmit` clean
 
-**Smoke-tested flows (curl + preview UI):** register → login → me → logout; settings GET/PUT; scan folder → import → list; dashboard; backup create → list → restore (files verified) → delete; palette search; collection filter; unauthed redirect/401.
+**Cloud groundwork:**
+- Added `CloudConnection` Prisma model for per-user provider metadata and OAuth token persistence
+- This is schema groundwork only; Google Drive OAuth/API/provider upload/restore is not implemented yet
+- Run `npx prisma db push` before using the new model in application code
+
+**Pushed micro-commits:**
+- `9e8ba30` — harden project and backup interactions
+- `6c60531` — introduce the Apple-inspired visual system
+- `d274356` — prepare cloud connection persistence
+- All commits are authored only by `Vedjr02 <ambreved3@gmail.com>`
+
+**Smoke-tested flows (before the visual/cloud groundwork commits):** register → login → me → logout; settings GET/PUT; scan folder → import → list; dashboard; backup create → list → restore (files verified) → delete; palette search; collection filter; unauthed redirect/401.
 
 ### 🟡 Known gaps / next up (in priority order)
 
-1. **Replace legacy next-auth scaffold** — delete `src/lib/auth.ts` + unused deps (`next-auth`, `@auth/prisma-adapter`, bcryptjs is still used) for a cleaner tree.
-2. **Auto-backup scheduler** — the setting persists but nothing enforces "weekly backups" yet (a cron/launchd job or an interval in a server singleton).
-3. **Data migration for old dev-user rows** — if the DB ever contains `dev-user-id` rows again, they're invisible post-auth (delete or reassign).
-4. **Skeleton loaders** — pages use spinner states; row/card skeletons would remove layout shift.
-5. **Scan rescan / project refresh** — `detectProject` runs at import only; "Rescan" action on detail page would refresh git state/size.
-6. **Theme toggle** — dark-only by design for now.
+1. **Google Drive OAuth integration** — implement connect/callback/disconnect routes, encrypted token refresh, a CodeShelf Backups folder, cloud upload/download/delete, and provider-aware restore.
+2. **Cloud connection UI** — add a real connected-account card and provider selector to Settings; local backup must remain a fallback.
+3. **Cloud backup data migration** — after Drive support is verified, add provider-aware backup records and idempotent retry behavior without breaking existing local archives.
+4. **Auto-backup scheduler** — the setting persists but nothing enforces weekly backups yet (cron/launchd or an interval in a server singleton).
+5. **Replace legacy next-auth scaffold** — delete `src/lib/auth.ts` + unused deps (`next-auth`, `@auth/prisma-adapter`; bcryptjs is still used).
+6. **Data migration for old dev-user rows** — if the DB ever contains `dev-user-id` rows again, they are invisible post-auth.
+7. **Scan rescan / project refresh** — `detectProject` runs at import only; add a detail-page refresh action for git state/size.
+8. **Feature differentiation** — backup timeline, project health score, smart duplicate cleanup, activity history, and native folder picker.
+9. **Automated tests** — add unit/API/end-to-end coverage for auth, import, backup, restore, deletion, and cloud connection flows.
 
 ### Known quirks / traps for the next agent
 
 - `node_modules` and `.env` are gitignored — do NOT `npm ci` unless needed.
-- Git history is **backdated synthetic micro-commits** (Sep 2–16, 2026) — intentional; keep backdating new commits (`GIT_AUTHOR_DATE`/`GIT_COMMITTER_DATE`, ≥12 per day).
+- Git history contains small micro-commits. New commits must be authored only as the repository owner; do not add any contributor or co-author trailers.
 - **ESLint react-hooks/set-state-in-effect:** calling a setState synchronously inside an effect (even via an async helper that awaits first, or `.then`) errors. Working pattern:
   ```ts
   useEffect(() => {
