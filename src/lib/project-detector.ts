@@ -293,7 +293,8 @@ export async function detectProject(projectPath: string): Promise<DetectionResul
   const readmeFiles = ['README.md', 'README.txt', 'README', 'readme.md'];
   for (const readmeFile of readmeFiles) {
     try {
-      readme = await fs.readFile(path.join(projectPath, readmeFile), 'utf-8');
+      // The user-selected project path is intentionally dynamic; do not bundle its filesystem tree.
+      readme = await fs.readFile(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ projectPath, readmeFile), 'utf-8');
       break;
     } catch {
       // Try next

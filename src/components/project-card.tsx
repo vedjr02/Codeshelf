@@ -51,7 +51,7 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
   const hasBackup = project.backups && project.backups.length > 0;
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-200 hover:bg-white/[0.075] bg-white/[0.06] border-white/[0.13] hover:border-white/[0.19]">
+    <Card className="group relative overflow-hidden transition-[background-color,border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-20px_rgba(0,0,0,0.9)] hover:bg-white/[0.075] bg-white/[0.06] border-white/[0.13] hover:border-white/[0.19]">
       <div className="flex flex-col p-6 min-h-[200px]">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1 min-w-0">
@@ -162,14 +162,14 @@ export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: 
         {/* Actions */}
         <div className="absolute top-5 right-5 flex items-center gap-1.5 shrink-0">
           {!hasBackup && (
-            <span title="Needs backup" className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-[#ff9f0a]/10 text-[#ff9f0a]/80">
+            <span title="Needs backup" aria-label="Needs backup" className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-[#ff9f0a]/10 text-[#ff9f0a]/80">
               <FolderSync className="w-3.5 h-3.5" />
             </span>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-white/50 hover:text-white">
+              <Button variant="ghost" size="icon" aria-label={`More actions for ${project.name}`} className="h-9 w-9 opacity-100 sm:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-white/50 hover:text-white">
                 <MoreHorizontal className="w-[18px] h-[18px]" />
               </Button>
             </DropdownMenuTrigger>

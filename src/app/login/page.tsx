@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FolderGit2, ShieldCheck, HardDrive, Layers, Loader2 } from 'lucide-react';
+import { FolderGit2, ShieldCheck, HardDrive, Layers, Loader2, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Mode = 'login' | 'register';
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isRegister = mode === 'register';
 
@@ -59,7 +60,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="codeshelf-auth min-h-screen flex">
       {/* Left — form */}
       <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-24 py-12">
         <div className="w-full max-w-[400px] mx-auto animate-rise">
@@ -138,17 +139,27 @@ export default function LoginPage() {
               <label htmlFor="password" className="text-[12.5px] text-white/50 mb-1.5 block font-medium">
                 Password
               </label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={isRegister ? 8 : undefined}
-                autoComplete={isRegister ? 'new-password' : 'current-password'}
-                placeholder={isRegister ? 'At least 8 characters' : '••••••••'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={isRegister ? 8 : undefined}
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  placeholder={isRegister ? 'At least 8 characters' : '••••••••'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-white/40 hover:text-white focus-visible:text-white"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             {isRegister && (
@@ -193,7 +204,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right — product panel */}
-      <div className="hidden lg:flex w-[44%] relative overflow-hidden border-l border-white/[0.06] items-center justify-center">
+      <div className="codeshelf-auth-panel hidden lg:flex w-[44%] relative overflow-hidden border-l border-white/[0.06] items-center justify-center">
         <div
           className="absolute inset-0"
           style={{

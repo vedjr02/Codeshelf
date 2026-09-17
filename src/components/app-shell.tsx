@@ -91,16 +91,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in-right">
+          <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in-right" role="dialog" aria-modal="true" aria-label="Main navigation">
             <Sidebar user={user} authResolved={authResolved} onLogout={handleLogout} collapsed={false} onNavigate={() => setMobileOpen(false)} />
           </div>
         </div>
       )}
 
       {/* Main column — offset matches the sidebar width (fixes overlap) */}
-      <div className={cn('transition-[padding] duration-200', collapsed ? 'md:pl-[76px]' : 'md:pl-72')}>
+      <div className={cn('codeshelf-main transition-[padding] duration-200', collapsed ? 'md:pl-[76px]' : 'md:pl-72')}>
         {/* Mobile topbar */}
-        <div className="sticky top-0 z-40 md:hidden flex items-center gap-3 h-14 px-4 bg-[#101014]/85 backdrop-blur-xl border-b border-white/[0.08]">
+        <div className="codeshelf-mobile-bar sticky top-0 z-40 md:hidden flex items-center gap-3 h-14 px-4 bg-[#101014]/85 backdrop-blur-xl border-b border-white/[0.08]">
           <button
             onClick={() => setMobileOpen(true)}
             className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"

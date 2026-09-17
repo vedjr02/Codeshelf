@@ -2,30 +2,40 @@
 
 @layer base {
   :root {
-    --accent: #2997ff;
-    --background: #0d0d10;
-    --foreground: #f7f7fa;
-    --text-secondary: #9a9aa3;
-    --surface: rgba(255, 255, 255, 0.07);
-    --surface-raised: #1f1f23;
-    --border: rgba(255, 255, 255, 0.14);
+    --accent: #0071e3;
+    --background: #f5f5f7;
+    --foreground: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #86868b;
+    --surface: rgba(255, 255, 255, 0.72);
+    --surface-hover: rgba(255, 255, 255, 0.92);
+    --surface-raised: #ffffff;
+    --border: rgba(0, 0, 0, 0.10);
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --focus-ring: rgba(0, 113, 227, 0.55);
   }
 
   * {
-    border-color: rgba(255, 255, 255, 0.14);
+    border-color: var(--border);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
   }
 
   html {
-    color-scheme: dark;
+    color-scheme: light;
     scroll-behavior: smooth;
   }
 
   body {
-    background-color: #0d0d10;
+    background-color: var(--background);
+    background-image: radial-gradient(80% 45% at 50% -10%, rgba(255,255,255,0.95), transparent 70%);
     /* Apple-style system font stack — SF Pro on macOS/iOS, Inter fallbacks elsewhere */
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
       "Helvetica Neue", "Segoe UI", Roboto, Inter, sans-serif;
-    color: #f5f5f7;
+    color: #1d1d1f;
     font-size: 16px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
@@ -110,6 +120,17 @@
 /* ============================================================
    Motion
    ============================================================ */
+
+/* Keep interaction motion subtle and respect user preferences. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 .animate-rise {
   animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -212,4 +233,141 @@
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
+}
+
+/* ============================================================
+   CodeShelf visual direction
+   ============================================================ */
+
+[class~="bg-[#0a84ff]"],
+[class~="bg-[#2997ff]"],
+[class~="bg-[#30d158]"] {
+  color: #ffffff !important;
+}
+
+.codeshelf-auth {
+  background: #f5f5f7;
+}
+
+.codeshelf-auth-panel {
+  background: rgba(255, 255, 255, 0.48);
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.codeshelf-sidebar {
+  background: rgba(250, 250, 252, 0.84) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 12px 0 40px -32px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+.codeshelf-main {
+  background: transparent;
+}
+
+.codeshelf-mobile-bar {
+  background: rgba(250, 250, 252, 0.86) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Translate the existing utility surfaces into a light Apple-like material system. */
+[class~="bg-white/[0.05]"],
+[class~="bg-white/[0.06]"],
+[class~="bg-white/[0.07]"],
+[class~="bg-white/[0.08]"] {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+[class~="bg-white/[0.045]"],
+[class~="bg-white/[0.055]"] {
+  background-color: rgba(255, 255, 255, 0.58) !important;
+}
+
+[class~="hover:bg-white/[0.05]"]:hover,
+[class~="hover:bg-white/[0.06]"]:hover,
+[class~="hover:bg-white/[0.075]"]:hover,
+[class~="hover:bg-white/[0.08]"]:hover,
+[class~="hover:bg-white/[0.09]"]:hover,
+[class~="hover:bg-white/[0.1]"]:hover,
+[class~="hover:bg-white/[0.12]"]:hover,
+[class~="hover:bg-white/[0.14]"]:hover {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+[class~="border-white/[0.05]"],
+[class~="border-white/[0.08]"],
+[class~="border-white/[0.09]"],
+[class~="border-white/[0.1]"],
+[class~="border-white/[0.11]"],
+[class~="border-white/[0.13]"],
+[class~="border-white/[0.14]"],
+[class~="border-white/[0.16]"] {
+  border-color: rgba(0, 0, 0, 0.09) !important;
+}
+
+[class~="text-white"],
+[class~="text-white/80"],
+[class~="text-white/85"],
+[class~="text-white/70"],
+[class~="text-white/60"],
+[class~="text-white/50"],
+[class~="text-white/45"],
+[class~="text-white/40"],
+[class~="text-white/35"],
+[class~="text-white/30"],
+[class~="text-white/25"],
+[class~="text-white/20"] {
+  color: #1d1d1f !important;
+}
+
+[class~="text-white/80"],
+[class~="text-white/70"],
+[class~="text-white/60"] { color: #3d3d42 !important; }
+[class~="text-white/50"],
+[class~="text-white/45"],
+[class~="text-white/40"] { color: #6e6e73 !important; }
+[class~="text-white/35"],
+[class~="text-white/30"],
+[class~="text-white/25"],
+[class~="text-white/20"] { color: #86868b !important; }
+
+[class~="text-[#9a9aa3]"],
+[class~="text-[#86868b]"] { color: #6e6e73 !important; }
+
+.codeshelf-card,
+.surface-card,
+.glass {
+  background: rgba(255, 255, 255, 0.74);
+  border-color: rgba(0, 0, 0, 0.09);
+  box-shadow: 0 12px 36px -28px rgba(0, 0, 0, 0.3);
+}
+
+.codeshelf-card:hover,
+.surface-card:hover,
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+[class~="bg-[#1f1f23]"],
+[class~="bg-[#1f1f23]/95"],
+[class~="bg-[#232328]/95"],
+[class~="bg-zinc-900/95"] {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  color: #1d1d1f !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.codeshelf-input {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1d1d1f !important;
+}
+
+.codeshelf-input::placeholder { color: #86868b !important; }
+
+::selection {
+  background-color: rgba(0, 113, 227, 0.18);
+  color: #1d1d1f;
 }

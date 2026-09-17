@@ -92,7 +92,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 h-screen bg-[#15151b]/90 backdrop-blur-2xl saturate-150 border-r border-white/[0.1] flex flex-col z-30 transition-[width] duration-200',
+        'codeshelf-sidebar fixed left-0 top-0 h-screen bg-[#15151b]/90 backdrop-blur-2xl saturate-150 border-r border-white/[0.1] flex flex-col z-30 transition-[width] duration-200',
         collapsed ? 'w-[76px]' : 'w-72'
       )}
     >
@@ -173,6 +173,7 @@ export function Sidebar({
                     href={item.href}
                     onClick={onNavigate}
                     title={collapsed ? item.label : undefined}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
                       'group flex items-center rounded-[11px] text-[13.5px] font-medium transition-all duration-150 relative',
                       collapsed ? 'justify-center h-10' : 'gap-3 px-3 py-2',
