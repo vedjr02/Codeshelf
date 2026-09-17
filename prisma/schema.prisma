@@ -24,6 +24,7 @@ model User {
   tags        Tag[]
   backups     Backup[]
   setting     Setting?
+  cloudConnections CloudConnection[]
 }
 
 model Account {
@@ -199,6 +200,26 @@ model Backup {
   @@index([projectId])
   @@index([userId])
   @@index([status])
+}
+
+model CloudConnection {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String
+  accountEmail String?
+  accountName  String?
+  folderId     String?
+  folderName   String?
+  accessToken  String?  @db.Text
+  refreshToken String?  @db.Text
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
 }
 
 model Setting {
