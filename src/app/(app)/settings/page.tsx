@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/states';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -93,7 +94,16 @@ export default function SettingsPage() {
   };
 
   if (!initialLoaded) {
-    return <div className="min-h-screen" />;
+    return (
+      <div className="min-h-screen">
+        <div className="p-5 sm:p-10 max-w-5xl mx-auto space-y-7" aria-busy="true" aria-label="Loading settings">
+          <div className="space-y-3"><Skeleton className="h-3 w-28" /><Skeleton className="h-10 w-48" /><Skeleton className="h-5 w-80 max-w-full" /></div>
+          <Skeleton className="h-64 w-full rounded-[18px]" />
+          <Skeleton className="h-48 w-full rounded-[18px]" />
+          <Skeleton className="h-48 w-full rounded-[18px]" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -157,16 +167,7 @@ export default function SettingsPage() {
                           Local Storage
                         </span>
                       </SelectItem>
-                      <SelectItem value="google-drive" disabled>
-                        <span className="flex items-center gap-2 text-white/30">
-                          Google Drive (Coming Soon)
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="s3" disabled>
-                        <span className="flex items-center gap-2 text-white/30">
-                          Amazon S3 (Coming Soon)
-                        </span>
-                      </SelectItem>
+
                     </SelectContent>
                   </Select>
                 </div>
@@ -179,7 +180,7 @@ export default function SettingsPage() {
                       <p className="text-[11.5px] text-white/35">Automatically backup projects weekly</p>
                     </div>
                   </div>
-                  <Switch checked={autoBackup} onCheckedChange={setAutoBackup} />
+                  <Switch aria-label="Enable automatic weekly backups" checked={autoBackup} onCheckedChange={setAutoBackup} />
                 </div>
               </div>
             </Card>
@@ -204,7 +205,7 @@ export default function SettingsPage() {
                       <p className="text-[11.5px] text-white/35">Get notified when backups complete</p>
                     </div>
                   </div>
-                  <Switch checked={notifications} onCheckedChange={setNotifications} />
+                  <Switch aria-label="Enable desktop backup notifications" checked={notifications} onCheckedChange={setNotifications} />
                 </div>
 
                 <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
@@ -215,9 +216,7 @@ export default function SettingsPage() {
                       <p className="text-[11.5px] text-white/35">Default patterns to exclude from backups</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="rounded-xl text-[12.5px]">
-                    Edit
-                  </Button>
+                  <span className="text-[12px] text-white/35">Applied automatically</span>
                 </div>
               </div>
             </Card>

@@ -6,6 +6,8 @@ import { ProjectCard } from '@/components/project-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { EmptyState, LoadingState } from '@/components/ui/states';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import {
   Select,
   SelectContent,
@@ -63,6 +65,9 @@ function ProjectsContent() {
   const [retryCount, setRetryCount] = useState(0);
   const [collectionName, setCollectionName] = useState<string | null>(null);
   const [tagName, setTagName] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { success, error: toastError } = useToast();
 
   // Debounced fetch: waits for typing to settle before hitting the API
   useEffect(() => {
@@ -108,15 +113,10 @@ function ProjectsContent() {
         body: JSON.stringify({ isFavorite: !project.isFavorite }),
       });
 
-      if (res.ok) {
-        setProjects(
-          projects.map((p) =>
-            p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
-          )
-        );
-      }
+      if (!res.ok) throw new Error('Could not update favorite status');
+      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, isFavorite: !p.isFavorite } : p));
     } catch (error) {
-      console.error('Failed to update favorite status:', error);
+      toastError('Could not update favorite', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -131,29 +131,26 @@ function ProjectsContent() {
         body: JSON.stringify({ isArchived: !project.isArchived }),
       });
 
-      if (res.ok) {
-        setProjects((prev) =>
-          prev.map((p) => (p.id === id ? { ...p, isArchived: !p.isArchived } : p))
-        );
-      }
+      if (!res.ok) throw new Error('Could not update archive status');
+      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, isArchived: !p.isArchived } : p));
     } catch (error) {
-      console.error('Failed to archive project:', error);
+      toastError('Could not update project', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this project from CodeShelf?')) return;
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        setProjects(projects.filter((p) => p.id !== id));
-      }
+      const res = await fetch(`/api/projects/${deleteTarget.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Could not remove this project');
+      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      success('Project removed', `${deleteTarget.name} was removed from your library. Files on disk were not changed.`);
+      setDeleteTarget(null);
     } catch (error) {
-      console.error('Failed to delete project:', error);
+      toastError('Could not remove project', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -199,16 +196,17 @@ function ProjectsContent() {
   const hasActiveContextFilters = Boolean(collectionId || tagId);
 
   return (
+    <>
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
           {/* Header */}
-          <div className="flex items-end justify-between mb-10 animate-rise">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 animate-rise">
             <div>
               <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
                 <Layers className="w-4 h-4" />
                 Project Library
               </span>
-              <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
+              <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
                 All Projects
               </h1>
               <p className="text-[16px] text-[#9a9aa3]">
@@ -291,6 +289,7 @@ function ProjectsContent() {
 
             <button
               onClick={() => setFilterFavorite(!filterFavorite)}
+              aria-pressed={filterFavorite}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
                 filterFavorite
                   ? 'bg-[#ffd60a]/15 border-[#ffd60a]/30 text-[#ffd60a]'
@@ -303,6 +302,7 @@ function ProjectsContent() {
 
             <button
               onClick={() => setFilterArchived(!filterArchived)}
+              aria-pressed={filterArchived}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
                 filterArchived
                   ? 'bg-[#0a84ff]/15 border-[#0a84ff]/30 text-[#2997ff]'
@@ -362,12 +362,24 @@ function ProjectsContent() {
                   project={project}
                   onToggleFavorite={handleToggleFavorite}
                   onArchive={handleArchive}
-                  onDelete={handleDelete}
+                  onDelete={(id) => setDeleteTarget(projects.find((p) => p.id === id) || null)}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}
+        title={deleteTarget ? `Remove “${deleteTarget.name}”?` : 'Remove project?'}
+        description="This removes the project from CodeShelf only. The project files on disk will not be deleted."
+        confirmLabel="Remove Project"
+        destructive
+        loading={isDeleting}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

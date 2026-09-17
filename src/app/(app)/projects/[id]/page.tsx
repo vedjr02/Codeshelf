@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { LoadingState, EmptyState } from '@/components/ui/states';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
 import {
   formatBytes,
   formatDate,
@@ -84,6 +86,9 @@ function ProjectDetailContent() {
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
+  const [deleteBackupId, setDeleteBackupId] = useState<string | null>(null);
+  const [isDeletingBackup, setIsDeletingBackup] = useState(false);
+  const { success, error: toastError } = useToast();
 
   const fetchProject = useCallback(async () => {
     try {
@@ -94,32 +99,16 @@ function ProjectDetailContent() {
       setNotes(data.notes || '');
     } catch (error) {
       console.error('Failed to load project:', error);
+      setLoadError('Project not found or failed to load');
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/projects/${id}`);
-        if (!res.ok) throw new Error('Project not found');
-        const data = await res.json();
-        if (cancelled) return;
-        setProject(data);
-        setNotes(data.notes || '');
-      } catch (error) {
-        console.error('Failed to load project:', error);
-        if (!cancelled) setLoadError('Project not found or failed to load');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+    const id = window.setTimeout(() => { void fetchProject(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [fetchProject]);
 
   const handleSaveNotes = async () => {
     try {
@@ -131,9 +120,12 @@ function ProjectDetailContent() {
       });
       if (res.ok) {
         setProject((prev) => (prev ? { ...prev, notes } : null));
+        success('Notes saved');
+      } else {
+        toastError('Could not save notes', 'Please try again.');
       }
     } catch (error) {
-      console.error('Failed to save notes:', error);
+      toastError('Could not save notes', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setIsSavingNotes(false);
     }
@@ -156,19 +148,24 @@ function ProjectDetailContent() {
       }, 500);
     } catch (error) {
       console.error('Backup error:', error);
+      toastError('Backup failed', error instanceof Error ? error.message : 'Please try again.');
       setIsBackingUp(false);
     }
   };
 
-  const handleDeleteBackup = async (backupId: string) => {
-    if (!confirm('Are you sure you want to delete this backup?')) return;
+  const handleDeleteBackup = async () => {
+    if (!deleteBackupId) return;
+    setIsDeletingBackup(true);
     try {
-      const res = await fetch(`/api/backup?backupId=${backupId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setProject((prev) => prev ? { ...prev, backups: prev.backups.filter((b) => b.id !== backupId) } : null);
-      }
+      const res = await fetch(`/api/backup?backupId=${deleteBackupId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Could not delete backup');
+      setProject((prev) => prev ? { ...prev, backups: prev.backups.filter((b) => b.id !== deleteBackupId) } : null);
+      success('Backup deleted');
+      setDeleteBackupId(null);
     } catch (error) {
-      console.error('Failed to delete backup:', error);
+      toastError('Could not delete backup', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setIsDeletingBackup(false);
     }
   };
 
@@ -215,6 +212,7 @@ function ProjectDetailContent() {
   const languageColor = getLanguageColor(project.language);
 
   return (
+    <>
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
           {/* Back */}
@@ -228,7 +226,7 @@ function ProjectDetailContent() {
 
           {/* Hero Header */}
           <div className="relative mb-10 animate-rise">
-            <div className="flex items-start gap-6">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-start gap-5 lg:gap-6">
               {/* Language tile */}
               <div
                 className="w-[68px] h-[68px] rounded-[18px] flex items-center justify-center shrink-0 border border-white/[0.11]"
@@ -239,10 +237,12 @@ function ProjectDetailContent() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-[40px] font-semibold tracking-tight leading-none truncate">{project.name}</h1>
+                  <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none truncate">{project.name}</h1>
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    aria-pressed={project.isFavorite}
                     onClick={handleToggleFavorite}
                     className="h-11 w-11 shrink-0"
                   >
@@ -267,7 +267,7 @@ function ProjectDetailContent() {
                 onClick={handleCreateBackup}
                 disabled={isBackingUp}
                 size="lg"
-                className="shrink-0 gap-2 rounded-full px-6 bg-[#30d158] text-white hover:bg-[#40e368] disabled:opacity-50"
+                className="w-full lg:w-auto shrink-0 gap-2 rounded-full px-6 bg-[#30d158] text-white hover:bg-[#40e368] disabled:opacity-50"
               >
                 <FolderSync className="w-[18px] h-[18px]" />
                 {isBackingUp ? 'Backing up...' : 'Create Backup'}
@@ -303,7 +303,7 @@ function ProjectDetailContent() {
 
           {/* Tabs */}
           <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="bg-white/[0.05] border border-white/[0.11] p-1.5 gap-1 w-full sm:w-auto">
+            <TabsList className="max-w-full overflow-x-auto justify-start bg-white/[0.05] border border-white/[0.11] p-1.5 gap-1 w-full sm:w-auto">
               {['overview','readme','files','dependencies','backups','notes'].map((tab) => (
                 <TabsTrigger key={tab} value={tab} className="rounded-[10px] text-[14px] capitalize px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50 transition-colors">
                   {tab}
@@ -313,7 +313,7 @@ function ProjectDetailContent() {
 
             {/* Overview */}
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
                   <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Info</h3>
                   <div className="space-y-3">
@@ -395,7 +395,7 @@ function ProjectDetailContent() {
 
             {/* Dependencies */}
             <TabsContent value="dependencies" className="space-y-6">
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {[
                   { label: 'Dependencies', items: project.dependencies, empty: 'No dependencies' },
                   { label: 'Dev Dependencies', items: project.devDependencies, empty: 'No dev dependencies' },
@@ -447,7 +447,7 @@ function ProjectDetailContent() {
                             <p className="text-[11px] text-white/40 tabular-nums">{formatBytes(backup.size)} · {backup.fileCount} files</p>
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteBackup(backup.id)} className="h-8 w-8 text-white/30 hover:text-red-400 hover:bg-red-500/10">
+                        <Button variant="ghost" size="icon" aria-label={`Delete backup from ${formatDate(backup.createdAt)}`} onClick={() => setDeleteBackupId(backup.id)} className="h-8 w-8 text-white/30 hover:text-red-400 hover:bg-red-500/10">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -478,6 +478,18 @@ function ProjectDetailContent() {
           </Tabs>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteBackupId !== null}
+        onOpenChange={(open) => !open && !isDeletingBackup && setDeleteBackupId(null)}
+        title="Delete this backup?"
+        description="The archive will be permanently removed from disk. Your project files will not be affected."
+        confirmLabel="Delete Backup"
+        destructive
+        loading={isDeletingBackup}
+        onConfirm={handleDeleteBackup}
+      />
+    </>
   );
 }
 

@@ -31,11 +31,15 @@ interface LoadingStateProps {
 
 export function LoadingState({ message = 'Loading...', className }: LoadingStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center py-12', className)}>
-      <Loader2 className="h-8 w-8 animate-spin text-[#2997ff] mb-4" />
-      <p className="text-[14px] text-[#9a9aa3]">{message}</p>
+    <div className={cn('flex flex-col items-center justify-center py-12', className)} role="status" aria-live="polite">
+      <Loader2 className="h-7 w-7 animate-spin text-[#2997ff] mb-4" aria-hidden="true" />
+      <p className="text-[14px] text-[#a1a1aa]">{message}</p>
     </div>
   );
+}
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden="true" className={cn('animate-pulse rounded-[10px] bg-white/[0.08]', className)} />;
 }
 
 interface ErrorStateProps {

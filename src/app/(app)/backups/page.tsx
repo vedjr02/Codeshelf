@@ -64,35 +64,20 @@ export default function BackupsPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/backup');
-        if (!res.ok) throw new Error('Failed to load backups');
-        const data = await res.json();
-        if (!cancelled) {
-          setBackups(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load backups');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const id = window.setTimeout(() => { void fetchBackups(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [fetchBackups]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    const res = await fetch(`/api/backup?backupId=${deleteTarget.id}`, { method: 'DELETE' });
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/backup?backupId=${deleteTarget.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Please try again.');
       setBackups((prev) => prev.filter((b) => b.id !== deleteTarget.id));
       success('Backup deleted', `${deleteTarget.project.name} — ${formatDate(deleteTarget.createdAt)}`);
-    } else {
-      toastError('Could not delete backup', 'Please try again.');
+      setDeleteTarget(null);
+    } catch (error) {
+      toastError('Could not delete backup', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -117,6 +102,8 @@ export default function BackupsPage() {
       }
       success('Backup restored', `Extracted to ${data.path}`);
       setRestoreTarget(null);
+    } catch (error) {
+      toastError('Restore failed', error instanceof Error ? error.message : 'Please check the destination and try again.');
     } finally {
       setRestoreBusy(false);
     }
@@ -153,14 +140,14 @@ export default function BackupsPage() {
             <Archive className="w-4 h-4" />
             Protection
           </span>
-          <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">Backups</h1>
+          <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">Backups</h1>
           <p className="text-[16px] text-[#9a9aa3] mt-1">
             Every snapshot across your library — create, restore, and clean up.
           </p>
         </div>
 
         {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-5 mb-8 stagger">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-8 stagger">
           <Card className="p-5 bg-white/[0.06] border-white/[0.13]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-[12px] bg-[#30d158]/10 flex items-center justify-center shrink-0">

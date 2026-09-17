@@ -234,8 +234,17 @@ export default function ImportPage() {
                   return (
                     <div
                       key={project.path}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      tabIndex={isImporting ? -1 : 0}
+                      onKeyDown={(e) => {
+                        if ((e.key === ' ' || e.key === 'Enter') && !isImporting) {
+                          e.preventDefault();
+                          handleToggleSelect(project.path);
+                        }
+                      }}
                       onClick={() => !isImporting && handleToggleSelect(project.path)}
-                      className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
+                      className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-[#2997ff]/55 focus-visible:outline-none ${
                         isSelected
                           ? 'border-[#2997ff]/35 bg-[#2997ff]/[0.07]'
                           : 'border-white/[0.13] bg-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.16]'

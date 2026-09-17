@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { LoadingState, EmptyState } from '@/components/ui/states';
+import { useToast } from '@/components/ui/toast';
 import { FolderKanban, Plus, Folder, Tag, Hash, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -38,6 +39,7 @@ export default function CollectionsPage() {
   const [newTagName, setNewTagName] = useState('');
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const { success, error: toastError } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -62,28 +64,9 @@ export default function CollectionsPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [colRes, tagRes] = await Promise.all([
-          fetch('/api/collections'),
-          fetch('/api/tags'),
-        ]);
-        const [colData, tagData] = await Promise.all([colRes.json(), tagRes.json()]);
-        if (!cancelled) {
-          setCollections(colData);
-          setTags(tagData);
-        }
-      } catch (error) {
-        console.error('Failed to load data:', error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const id = window.setTimeout(() => { void fetchData(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [fetchData]);
 
   const handleCreateCollection = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,14 +82,14 @@ export default function CollectionsPage() {
         }),
       });
 
-      if (res.ok) {
-        setNewCollectionName('');
-        setNewCollectionDesc('');
-        setIsCreatingCollection(false);
-        fetchData();
-      }
+      if (!res.ok) throw new Error('Could not create collection');
+      setNewCollectionName('');
+      setNewCollectionDesc('');
+      setIsCreatingCollection(false);
+      success('Collection created');
+      fetchData();
     } catch (error) {
-      console.error('Failed to create collection:', error);
+      toastError('Could not create collection', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -121,13 +104,13 @@ export default function CollectionsPage() {
         body: JSON.stringify({ name: newTagName }),
       });
 
-      if (res.ok) {
-        setNewTagName('');
-        setIsCreatingTag(false);
-        fetchData();
-      }
+      if (!res.ok) throw new Error('Could not create tag');
+      setNewTagName('');
+      setIsCreatingTag(false);
+      success('Tag created');
+      fetchData();
     } catch (error) {
-      console.error('Failed to create tag:', error);
+      toastError('Could not create tag', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -148,7 +131,7 @@ export default function CollectionsPage() {
               <FolderKanban className="w-4 h-4" />
               Organize
             </span>
-            <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
+            <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
               Collections & Tags
             </h1>
             <p className="text-[16px] text-[#9a9aa3] mt-1">
@@ -156,7 +139,7 @@ export default function CollectionsPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
             {/* Collections Section */}
             <div className="animate-rise" style={{ animationDelay: '0.05s' }}>
               <div className="flex items-center justify-between mb-4">

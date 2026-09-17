@@ -200,26 +200,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/dashboard');
-        if (!res.ok) throw new Error('Failed to fetch stats');
-        const data = await res.json();
-        if (!cancelled) {
-          setStats(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const id = window.setTimeout(() => { void fetchStats(); }, 0);
+    return () => window.clearTimeout(id);
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -253,7 +236,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen">
         <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
-          <div className="flex items-end justify-between mb-10 animate-rise">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 animate-rise">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45">
@@ -261,7 +244,7 @@ export default function DashboardPage() {
                   {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </span>
               </div>
-              <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
+              <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
                 Welcome to CodeShelf
               </h1>
               <p className="text-[16px] text-[#9a9aa3]">Your shelf is empty — let&apos;s fill it.</p>
@@ -348,7 +331,7 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
           {/* Header */}
-          <div className="flex items-end justify-between mb-10 animate-rise">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 animate-rise">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45">
@@ -356,7 +339,7 @@ export default function DashboardPage() {
                   {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </span>
               </div>
-              <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
+              <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
                 {greeting}, Developer
               </h1>
               <p className="text-[16px] text-[#9a9aa3]">
@@ -412,7 +395,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Main content */}
-          <div className="grid grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left — 2 cols */}
             <div className="col-span-3 lg:col-span-2 space-y-8">
               {/* Language + Framework distribution */}
