@@ -146,7 +146,7 @@ Test data created during verification was removed afterwards; the database is ba
 5. **Remove the legacy next-auth scaffold** — `src/lib/auth.ts` plus `next-auth` and `@auth/prisma-adapter` are unused (bcryptjs is still used).
 6. **Automated tests** — no test suite exists. Auth, import, backup, restore, storage reclaim (especially the path guards) and smart rules all deserve coverage.
 7. **Native folder picker** for import, instead of typing a path.
-8. **Library-wide storage view** — Manage Storage is per project; a whole-library version would be the obvious next feature.
+8. ~~**Library-wide storage view**~~ — done on 2026-09-18; see the session note below.
 
 ### Known quirks / traps for the next agent
 
@@ -168,6 +168,35 @@ Test data created during verification was removed afterwards; the database is ba
 - Restore and archive deletion require `unzip` on PATH (macOS has it).
 - `getLanguageColor` / `getFrameworkColor` in `src/lib/utils.ts` drive all language dots. Those are GitHub's colours and some are low-contrast, so they are used only as dots and tints, never as text.
 - API routes live in `src/app/api/...`: `auth/*`, `projects`, `projects/[id]`, `projects/[id]/open`, `projects/[id]/refresh`, `projects/[id]/storage`, `dashboard`, `backup` (incl. `PUT` restore), `settings`, `collections`, `tags`, `smart-collections`, `smart-collections/[id]`, `search`, `import/scan`.
+
+---
+
+## Session: 2026-09-18 — density pass and library-wide Storage
+
+### Layout and density
+
+The complaint was that the app "looks too small". Two separate causes:
+
+- **Content was capped at 1120px** (`PageShell` `WIDTHS.default`) while the sidebar took 248px. On a 1728px display that left roughly 180px of dead gutter on each side. `default` and `wide` are now fluid up to **1600px**, `narrow` went 760 → 860px, and page gutters gain `xl:px-10`.
+- **The type scale ran small.** Every `text-[Npx]` utility in `src/` moved up one step (11 → 12, 12.5 → 13.5, 13.5 → 14.5, 15 → 16, and so on), and body copy went 15 → 16px with line-height 1.47 → 1.5. Control heights followed so the density still reads right: button `xs` 28 → 30px, `sm` 32 → 34px, sidebar rows 30 → 34px, sidebar itself 248 → 264px.
+- **The Overview used the new width.** It was a 3-column grid inside a narrow cap, so the right-hand column was a strip. It is now a 12-column grid at `2xl` — Needs attention (5), Backup activity and Composition (4), Disk and Pick up where you left off (3) — and the Projects grid gains a fourth card column at `2xl`.
+
+### New: Storage across the whole library
+
+`Manage Storage` answered "why is this project 900 MB". The new page answers "where did my disk go".
+
+- `src/lib/reclaim.ts` now holds the scan, the measurement, the path guards and the delete. The per-project route and the library route call the same code, so a path that is unsafe in one is unsafe in both.
+- `GET /api/storage` walks every non-archived project, sequentially (parallel disk walks are slower, not faster), and caches the result per user for five minutes. `?refresh=1` forces a fresh walk; `?cached=1` returns `{ pending: true }` rather than starting one, which is what the Overview tile uses so opening the Overview never blocks on a disk walk.
+- `DELETE /api/storage` takes selections across several projects. Every path is re-resolved against its own project on the server before anything is removed, and the whole plan is resolved before the first delete, so one bad path cannot leave half the selection already gone. Any delete invalidates the cache.
+- `/storage` shows the total, a bar of the five heaviest projects, and a per-project list that expands to each folder with its size and what it is. Selection works per folder or per project, with select-all.
+- The Overview gained a **Disk** tile that reads the cached number and links to the page; with nothing cached it reads "not scanned yet" and offers a scan.
+
+### Verified
+
+- `tsc --noEmit`, `eslint src` and `next build` are all clean; `/storage` and `/api/storage` appear in the build output.
+- `/storage` redirects to `/login` unauthenticated (307); `/api/storage` answers 401 on both GET and DELETE.
+- The scan and its guards were exercised directly against a fixture tree: `node_modules` and a nested `packages/ui/dist` were found with correct sizes and reasons, `.git` and `src` were not, a missing project folder was flagged rather than throwing, and `resolveInside` rejected `../../etc`, `/etc`, `src`, `""`, `node_modules/../../../etc` and `.git` while accepting `node_modules` and `packages/ui/dist`.
+- **Still not eyeballed in a browser.** The Chrome extension was not connected this session either, so the width and density changes are verified as compiled output only. Open both themes and phone width before trusting them.
 
 ---
 
