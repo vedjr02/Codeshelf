@@ -28,6 +28,7 @@ Your personal project library and local backup manager. CodeShelf scans your mac
 ### Reclaim your disk
 
 - **Manage Storage** finds the dependency trees, build output and caches inside a project, tells you what each one is and why it is safe to remove, and deletes only what you tick. Nothing you wrote is touched.
+- **Storage across the whole library** — the same scan run over every project at once, biggest first, with one bar showing where the space actually went. Expand a project to see each folder and what it is, tick across as many projects as you like, and free it all in one pass. The result is cached for five minutes so reopening the page is instant, and any delete drops the cache.
 
 ### Live where you work
 
@@ -90,12 +91,13 @@ src/
 │   │   ├── page.tsx          # overview
 │   │   ├── projects/         # library + [id] detail (timeline, storage, files, notes)
 │   │   ├── backups/          # every snapshot, grouped by project
+│   │   ├── storage/          # library-wide reclaimable space
 │   │   ├── collections/      # collections, tags, Smart Collection rule editor
 │   │   ├── import/           # folder scan → multi-select import
 │   │   └── settings/         # appearance, snapshot location, preferences
 │   └── api/                  # auth, projects (+open/refresh/storage), backup,
 │                             # dashboard, search, settings, collections, tags,
-│                             # smart-collections
+│                             # smart-collections, storage (library-wide)
 ├── components/
 │   ├── app-shell.tsx         # layout, mobile drawer, providers
 │   ├── page-shell.tsx        # shared page frame with a collapsing toolbar
@@ -108,6 +110,7 @@ src/
 │   └── ui/                   # token-driven primitives
 └── lib/
     ├── health.ts             # the Shelf Score
+    ├── reclaim.ts            # the storage scan, path guards and delete
     ├── smart-rules.ts        # rule schema, evaluator and presets
     ├── project-query.ts      # one place that serializes and scores a project
     ├── os-actions.ts         # Finder / editor / terminal
@@ -122,7 +125,7 @@ src/
 - Snapshots are written under `BACKUP_STORAGE_PATH` (default `/tmp/codeshelf-backups`). **Point this somewhere durable in Settings** — macOS can clear `/tmp` on restart, and CodeShelf warns you when the path starts with it.
 - Removing a project from CodeShelf never touches files on disk. Deleting a snapshot removes that archive permanently, with confirmation.
 - Restore extracts into a **new timestamped folder** inside the destination you choose.
-- Manage Storage only ever removes directories whose name is on a known-regenerable list, after resolving the path and proving it stays inside the project.
+- Manage Storage only ever removes directories whose name is on a known-regenerable list, after resolving the path and proving it stays inside the project. The library-wide page re-resolves every path against its own project on the server, so nothing the browser sends is trusted.
 - Automatic weekly snapshots are not implemented yet; Settings labels the toggle as inactive rather than pretending otherwise.
 
 ## Security
@@ -192,12 +195,16 @@ Set these environment variables for Production, Preview and Development:
 |---|---|
 | `DATABASE_URL` | the pooled connection string |
 | `DIRECT_URL` | the direct connection string |
-| `CODESHELF_ALLOW_REGISTRATION` | `true` for the first deploy only |
 
-Deploy, open the URL, and create your account. Then remove
-`CODESHELF_ALLOW_REGISTRATION` and redeploy — sign-up closes again and the
-instance is yours alone. This matters more here than locally: the hosted app is
-reachable by anyone with the URL.
+Those two are all that is needed. Nothing else has to be set: `CODESHELF_DESKTOP`
+already resolves to off on Vercel, and `BACKUP_STORAGE_PATH` is meaningless on a
+host with no durable disk.
+
+Deploy, open the URL, and create your account. Sign-up is open only while the
+user table is empty, so the first person to reach the URL claims the instance —
+create your account as soon as the deployment is live, before sharing the link.
+After that `/api/auth/register` returns 403 until you deliberately set
+`CODESHELF_ALLOW_REGISTRATION=true`.
 
 Every push to `main` redeploys from then on.
 
