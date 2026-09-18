@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/session';
+import { computeHealth } from '@/lib/health';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -110,6 +111,22 @@ export async function GET(
       // Keep empty if path is inaccessible
     }
 
+    const lastCompletedBackup = project.backups.find(b => b.status === 'completed') ?? null;
+
+    // Scored here so the detail page, the list and the palette always agree.
+    const health = computeHealth({
+      isGitRepo: project.isGitRepo,
+      gitRemote: project.gitRemote,
+      gitStatus: project.gitStatus,
+      readme: project.readme,
+      notes: project.notes,
+      size: project.size,
+      lastModified: project.lastModified,
+      lastBackupAt: lastCompletedBackup?.createdAt ?? null,
+      tagCount: project.tags.length,
+      collectionCount: project.collections.length,
+    });
+
     return NextResponse.json({
       ...project,
       size: Number(project.size),
@@ -123,6 +140,8 @@ export async function GET(
         ...b,
         size: Number(b.size),
       })),
+      lastBackupAt: lastCompletedBackup?.createdAt ?? null,
+      health,
     });
   } catch (error) {
     console.error('Failed to fetch project:', error);

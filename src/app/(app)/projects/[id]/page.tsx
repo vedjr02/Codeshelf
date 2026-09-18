@@ -1,34 +1,39 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
-import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { LoadingState, EmptyState } from '@/components/ui/states';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useToast } from '@/components/ui/toast';
+import * as React from 'react';
+import { Suspense } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
-  formatBytes,
-  formatDate,
-  formatRelativeTime,
-  getLanguageColor,
-} from '@/lib/utils';
-import {
+  Code2,
   ExternalLink,
-  Star,
-  HardDrive,
-  FileCode,
-  FolderSync,
-  Trash2,
-  Folder,
   File,
-  Plus,
-  ArrowLeft,
-  CheckCircle,
+  FileCode,
+  Folder,
+  FolderOpen,
+  Loader2,
+  RefreshCw,
+  ShieldPlus,
+  Star,
+  Terminal,
 } from 'lucide-react';
-import Link from 'next/link';
+import { PageShell, Section } from '@/components/page-shell';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui/states';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ScoreRing, ScoreBreakdown } from '@/components/score';
+import { BackupTimeline } from '@/components/backup-timeline';
+import { RestoreDialog } from '@/components/restore-dialog';
+import { StoragePanel } from '@/components/storage-panel';
+import { ProjectFiling } from '@/components/project-filing';
+import { useProjectActions, ProjectMenu } from '@/components/project-actions';
+import { useToast } from '@/components/ui/toast';
+import { formatBytes, formatExact, formatRelativeTime, getLanguageColor, prettyPath, cn } from '@/lib/utils';
+import { gradeLabel, type HealthReport } from '@/lib/health';
+import type { BackupRecord, ProjectSummary } from '@/types/client';
 
 interface FileNode {
   name: string;
@@ -38,465 +43,527 @@ interface FileNode {
   children?: FileNode[];
 }
 
-interface ProjectDetail {
-  id: string;
-  name: string;
-  path: string;
-  description?: string | null;
-  language?: string | null;
-  framework?: string | null;
-  packageManager?: string | null;
-  size: number;
-  lastModified?: string | null;
-  lastOpened?: string | null;
+/** Detail carries full backup records, where the list carries summaries. */
+interface ProjectDetail extends Omit<ProjectSummary, 'backups'> {
   readme?: string | null;
-  notes?: string | null;
-  isGitRepo: boolean;
-  gitBranch?: string | null;
-  gitRemote?: string | null;
-  gitStatus?: string | null;
-  isFavorite: boolean;
-  isArchived: boolean;
-  tags: Array<{ id: string; name: string; color: string }>;
-  collections: Array<{ id: string; name: string }>;
   dependencies: Array<{ name: string; version: string; type: string }>;
   devDependencies: Array<{ name: string; version: string; type: string }>;
   scripts: Array<{ name: string; command: string }>;
   fileStructure: FileNode[];
-  backups: Array<{
-    id: string;
-    provider: string;
-    storagePath: string;
-    size: number;
-    fileCount: number;
-    status: string;
-    progress: number;
-    createdAt: string;
-  }>;
+  backups: BackupRecord[];
+  health: HealthReport;
+}
+
+export default function ProjectDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageShell title="Project" back={{ href: '/projects', label: 'Projects' }}>
+          <Skeleton className="h-64 w-full rounded-[var(--radius-xl)]" />
+        </PageShell>
+      }
+    >
+      <ProjectDetailContent />
+    </Suspense>
+  );
 }
 
 function ProjectDetailContent() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
-
-  const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [backupProgress, setBackupProgress] = useState(0);
-  const [deleteBackupId, setDeleteBackupId] = useState<string | null>(null);
-  const [isDeletingBackup, setIsDeletingBackup] = useState(false);
   const { success, error: toastError } = useToast();
 
-  const fetchProject = useCallback(async () => {
+  const [project, setProject] = React.useState<ProjectDetail | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const [notes, setNotes] = React.useState('');
+  const [savingNotes, setSavingNotes] = React.useState(false);
+  const [backingUp, setBackingUp] = React.useState(false);
+
+  const [restoreTarget, setRestoreTarget] = React.useState<BackupRecord | null>(null);
+  const [deleteBackup, setDeleteBackup] = React.useState<BackupRecord | null>(null);
+  const [deletingBackup, setDeletingBackup] = React.useState(false);
+  const [deleteProject, setDeleteProject] = React.useState<ProjectSummary | null>(null);
+
+  const load = React.useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${id}`);
-      if (!res.ok) throw new Error('Project not found');
-      const data = await res.json();
+      if (!res.ok) throw new Error('This project is not in your library.');
+      const data = (await res.json()) as ProjectDetail;
       setProject(data);
-      setNotes(data.notes || '');
-    } catch (error) {
-      console.error('Failed to load project:', error);
-      setLoadError('Project not found or failed to load');
+      setNotes(data.notes ?? '');
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load this project');
     } finally {
       setLoading(false);
     }
   }, [id]);
 
-  useEffect(() => {
-    const id = window.setTimeout(() => { void fetchProject(); }, 0);
-    return () => window.clearTimeout(id);
-  }, [fetchProject]);
+  React.useEffect(() => {
+    const signal = { cancelled: false };
+    (async () => {
+      await load();
+      if (signal.cancelled) return;
+    })();
+    return () => {
+      signal.cancelled = true;
+    };
+  }, [load]);
 
-  const handleSaveNotes = async () => {
+  const actions = useProjectActions({
+    onPatched: (_, patch) => setProject((prev) => (prev ? { ...prev, ...patch } : prev)),
+    onRefreshed: () => void load(),
+  });
+
+  const saveNotes = async () => {
+    setSavingNotes(true);
     try {
-      setIsSavingNotes(true);
       const res = await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes }),
       });
-      if (res.ok) {
-        setProject((prev) => (prev ? { ...prev, notes } : null));
-        success('Notes saved');
-      } else {
-        toastError('Could not save notes', 'Please try again.');
-      }
-    } catch (error) {
-      toastError('Could not save notes', error instanceof Error ? error.message : 'Please try again.');
+      if (!res.ok) throw new Error('Could not save your notes');
+      success('Notes saved');
+      await load();
+    } catch (err) {
+      toastError('Could not save notes', err instanceof Error ? err.message : 'Please try again.');
     } finally {
-      setIsSavingNotes(false);
+      setSavingNotes(false);
     }
   };
 
-  const handleCreateBackup = async () => {
-    try {
-      setIsBackingUp(true);
-      setBackupProgress(10);
-      const res = await fetch('/api/backup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: id }),
-      });
-      if (!res.ok) throw new Error('Backup failed');
-      setBackupProgress(100);
-      setTimeout(() => {
-        setIsBackingUp(false);
-        fetchProject();
-      }, 500);
-    } catch (error) {
-      console.error('Backup error:', error);
-      toastError('Backup failed', error instanceof Error ? error.message : 'Please try again.');
-      setIsBackingUp(false);
-    }
-  };
-
-  const handleDeleteBackup = async () => {
-    if (!deleteBackupId) return;
-    setIsDeletingBackup(true);
-    try {
-      const res = await fetch(`/api/backup?backupId=${deleteBackupId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Could not delete backup');
-      setProject((prev) => prev ? { ...prev, backups: prev.backups.filter((b) => b.id !== deleteBackupId) } : null);
-      success('Backup deleted');
-      setDeleteBackupId(null);
-    } catch (error) {
-      toastError('Could not delete backup', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setIsDeletingBackup(false);
-    }
-  };
-
-  const handleToggleFavorite = async () => {
+  const takeSnapshot = async () => {
     if (!project) return;
+    setBackingUp(true);
     try {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isFavorite: !project.isFavorite }),
-      });
-      if (res.ok) {
-        setProject((prev) => prev ? { ...prev, isFavorite: !prev.isFavorite } : null);
-      }
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+      const ok = await actions.backUpNow(project);
+      if (ok) await load();
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const removeBackup = async () => {
+    if (!deleteBackup) return;
+    setDeletingBackup(true);
+    try {
+      const res = await fetch(`/api/backup?backupId=${deleteBackup.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Could not delete that snapshot');
+      success('Snapshot deleted');
+      setDeleteBackup(null);
+      await load();
+    } catch (err) {
+      toastError('Could not delete snapshot', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setDeletingBackup(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingState message="Loading project details..." />
-      </div>
+      <PageShell title="Loading…" back={{ href: '/projects', label: 'Projects' }}>
+        <div className="space-y-5">
+          <Skeleton className="h-[184px] w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-[320px] w-full rounded-[var(--radius-xl)]" />
+        </div>
+      </PageShell>
     );
   }
 
-  if (!project) {
+  if (error || !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <EmptyState
-          title={loadError ? 'Failed to load project' : 'Project not found'}
-          description={loadError || 'The requested project could not be found.'}
-          action={
-            <Link href="/projects">
-              <Button variant="secondary" className="rounded-xl">Back to Projects</Button>
-            </Link>
-          }
-        />
-      </div>
+      <PageShell title="Project not found" back={{ href: '/projects', label: 'Projects' }}>
+        <Card className="p-4">
+          <ErrorState
+            title="We could not open this project"
+            message={error ?? 'It may have been removed from your library.'}
+            retry={load}
+          />
+        </Card>
+      </PageShell>
     );
   }
 
   const languageColor = getLanguageColor(project.language);
+  const busy = actions.pending === project.id;
 
   return (
     <>
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
-          {/* Back */}
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-2 text-[14px] text-[#9a9aa3] hover:text-white mb-7 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Projects
-          </Link>
-
-          {/* Hero Header */}
-          <div className="relative mb-10 animate-rise">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-start gap-5 lg:gap-6">
-              {/* Language tile */}
-              <div
-                className="w-[68px] h-[68px] rounded-[18px] flex items-center justify-center shrink-0 border border-white/[0.11]"
-                style={{ backgroundColor: `${languageColor}14` }}
-              >
-                <span className="w-5 h-5 rounded-full lang-dot" style={{ color: languageColor, backgroundColor: languageColor }} />
+      <PageShell
+        title={project.name}
+        back={{ href: '/projects', label: 'Projects' }}
+        width="wide"
+        subtitle={
+          <span className="mono text-[14px] text-ink-4" title={project.path}>
+            {prettyPath(project.path)}
+          </span>
+        }
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={project.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+              aria-pressed={project.isFavorite}
+              onClick={() => void actions.toggleFavorite(project)}
+            >
+              <Star className={cn('h-[18px] w-[18px]', project.isFavorite ? 'fill-warn text-warn' : 'text-ink-4')} />
+            </Button>
+            <Button variant="secondary" size="pill" disabled={busy} onClick={() => void actions.openIn(project, 'editor')}>
+              <Code2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Open</span>
+            </Button>
+            <Button variant="primary" size="pill" disabled={backingUp || busy} onClick={() => void takeSnapshot()}>
+              {backingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldPlus className="h-4 w-4" />}
+              {backingUp ? 'Backing up…' : 'Back up'}
+            </Button>
+            <ProjectMenu project={project} actions={actions} onRequestDelete={setDeleteProject} />
+          </>
+        }
+      >
+        {/* ---- Score + facts --------------------------------------------- */}
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <div className="flex flex-col gap-6 p-6 sm:flex-row">
+              <ScoreRing score={project.health.score} grade={project.health.grade} size={104} thickness={8} caption="Score" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[18px] font-semibold tracking-[-0.02em] text-ink">
+                  {gradeLabel(project.health.grade)}
+                </h2>
+                <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-3">{project.health.headline}</p>
+                <div className="mt-5">
+                  <ProjectFiling
+                    projectId={project.id}
+                    tags={project.tags}
+                    collections={project.collections}
+                    onChanged={(next) => setProject((prev) => (prev ? { ...prev, ...next } : prev))}
+                  />
+                </div>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-px border-t-[0.5px] border-line bg-line sm:grid-cols-4">
+              <Fact label="Language" value={project.language ?? 'Unknown'} dot={project.language ? languageColor : undefined} />
+              <Fact label="Size" value={formatBytes(project.size)} />
+              <Fact
+                label="Branch"
+                value={project.isGitRepo ? project.gitBranch ?? 'detached' : 'No git'}
+                hint={project.gitStatus === 'dirty' ? 'Uncommitted changes' : undefined}
+                hintTone={project.gitStatus === 'dirty' ? 'warn' : undefined}
+              />
+              <Fact label="Last backup" value={formatRelativeTime(project.lastBackupAt)} />
+            </div>
+          </Card>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none truncate">{project.name}</h1>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    aria-pressed={project.isFavorite}
-                    onClick={handleToggleFavorite}
-                    className="h-11 w-11 shrink-0"
-                  >
-                    <Star className={`w-6 h-6 transition-colors ${project.isFavorite ? 'text-[#ffd60a] fill-[#ffd60a]' : 'text-white/30 hover:text-[#ffd60a]/60'}`} />
+          <Card className="p-6">
+            <h2 className="text-[15.5px] font-semibold tracking-[-0.015em]">What makes up the score</h2>
+            <ScoreBreakdown report={project.health} className="mt-4" />
+          </Card>
+        </div>
+
+        {/* ---- Sections -------------------------------------------------- */}
+        <Tabs defaultValue="overview" className="mt-8">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="timeline">
+              Timeline
+              {project.backups.length > 0 && <span className="ml-1.5 text-ink-4">{project.backups.length}</span>}
+            </TabsTrigger>
+            <TabsTrigger value="storage">Storage</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+            <TabsTrigger value="readme">README</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
+          </TabsList>
+
+          {/* Overview */}
+          <TabsContent value="overview" className="pt-6">
+            <div className="grid gap-5 md:grid-cols-2">
+              <Card className="p-5">
+                <h3 className="text-[16px] font-semibold tracking-[-0.015em]">Details</h3>
+                <dl className="mt-4 space-y-0">
+                  <Detail label="Framework" value={project.framework ?? 'None detected'} />
+                  <Detail label="Package manager" value={project.packageManager ?? 'None detected'} />
+                  <Detail label="Modified" value={formatExact(project.lastModified)} />
+                  <Detail label="Last opened" value={formatExact(project.lastOpened)} />
+                  <Detail
+                    label="Remote"
+                    value={
+                      project.gitRemote ? (
+                        <a
+                          href={project.gitRemote.startsWith('http') ? project.gitRemote : undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mono inline-flex max-w-[220px] items-center gap-1 truncate text-accent-ink hover:underline"
+                        >
+                          {project.gitRemote}
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ) : (
+                        'None'
+                      )
+                    }
+                  />
+                </dl>
+
+                <div className="mt-5 flex flex-wrap gap-2 border-t-[0.5px] border-line pt-4">
+                  <Button variant="secondary" size="sm" onClick={() => void actions.openIn(project, 'finder')}>
+                    <FolderOpen className="h-[15px] w-[15px]" />
+                    Reveal
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => void actions.openIn(project, 'terminal')}>
+                    <Terminal className="h-[15px] w-[15px]" />
+                    Terminal
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => void actions.refresh(project)} disabled={busy}>
+                    <RefreshCw className={cn('h-[15px] w-[15px]', busy && 'animate-spin')} />
+                    Refresh from disk
                   </Button>
                 </div>
-                <p className="text-[13px] text-[#9a9aa3] font-mono truncate mt-1.5">{project.path}</p>
+              </Card>
 
-                {/* Tags */}
-                {project.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {project.tags.map((tag) => (
-                      <span key={tag.id} className="px-3 py-1 text-[12px] rounded-full" style={{ backgroundColor: `${tag.color}18`, color: tag.color }}>
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <Button
-                onClick={handleCreateBackup}
-                disabled={isBackingUp}
-                size="lg"
-                className="w-full lg:w-auto shrink-0 gap-2 rounded-full px-6 bg-[#30d158] text-white hover:bg-[#40e368] disabled:opacity-50"
-              >
-                <FolderSync className="w-[18px] h-[18px]" />
-                {isBackingUp ? 'Backing up...' : 'Create Backup'}
-              </Button>
-            </div>
-
-            {/* Stat chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 stagger">
-              {[
-                { label: 'Language', value: project.language || 'Unknown', color: languageColor },
-                { label: 'Size', value: formatBytes(project.size), color: '#f5f5f7' },
-                { label: 'Git', value: project.isGitRepo ? project.gitBranch || 'main' : 'Not a repo', color: project.isGitRepo ? '#f5f5f7' : '#9a9aa3' },
-                { label: 'Modified', value: formatRelativeTime(project.lastModified), color: '#f5f5f7' },
-              ].map((chip) => (
-                <div key={chip.label} className="px-5 py-4 rounded-[14px] bg-white/[0.06] border border-white/[0.11]">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/40 mb-1.5">{chip.label}</div>
-                  <div className="text-[15px] font-semibold truncate" style={{ color: chip.color }}>{chip.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Backup Progress */}
-          {isBackingUp && (
-            <Card className="mb-8 p-5 border-[#30d158]/25 bg-[#30d158]/[0.06]">
-              <div className="flex items-center justify-between text-[14px] mb-3">
-                <span className="text-[#30d158]">Backing up project...</span>
-                <span className="text-[#30d158] tabular-nums">{backupProgress}%</span>
-              </div>
-              <Progress value={backupProgress} className="h-2" />
-            </Card>
-          )}
-
-          {/* Tabs */}
-          <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="max-w-full overflow-x-auto justify-start bg-white/[0.05] border border-white/[0.11] p-1.5 gap-1 w-full sm:w-auto">
-              {['overview','readme','files','dependencies','backups','notes'].map((tab) => (
-                <TabsTrigger key={tab} value={tab} className="rounded-[10px] text-[14px] capitalize px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50 transition-colors">
-                  {tab}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            {/* Overview */}
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
-                  <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Info</h3>
-                  <div className="space-y-3">
-                    {[
-                      { k: 'Framework', v: project.framework },
-                      { k: 'Package Manager', v: project.packageManager },
-                      { k: 'Last Opened', v: formatDate(project.lastOpened) },
-                    ].map(({ k, v }) => (
-                      <div key={k} className="flex justify-between py-1.5 border-b border-white/[0.05]">
-                        <span className="text-[12px] text-white/40">{k}</span>
-                        <span className="text-[12.5px] font-medium">{v || 'None'}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between py-1.5 border-b border-white/[0.05]">
-                      <span className="text-[12px] text-white/40">Git Remote</span>
-                      {project.gitRemote ? (
-                        <a href={project.gitRemote} target="_blank" rel="noopener noreferrer"
-                          className="text-[12.5px] text-sky-400 hover:underline flex items-center gap-1 truncate max-w-[200px]">
-                          {project.gitRemote}
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                        </a>
-                      ) : <span className="text-[12.5px] text-white/30">None</span>}
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
-                  <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Scripts</h3>
-                  {project.scripts.length === 0 ? (
-                    <p className="text-[12px] text-white/35">No scripts found</p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-auto no-scrollbar">
-                      {project.scripts.map((script) => (
-                        <div key={script.name} className="p-2.5 rounded-lg bg-white/[0.06] font-mono text-[11.5px]">
-                          <div className="font-semibold text-white/80 mb-0.5">{script.name}</div>
-                          <div className="text-white/40 truncate">{script.command}</div>
+              <Card className="p-5">
+                <h3 className="text-[16px] font-semibold tracking-[-0.015em]">Scripts</h3>
+                {project.scripts.length === 0 ? (
+                  <p className="mt-4 text-[14px] text-ink-4">No scripts declared in this project.</p>
+                ) : (
+                  <ul className="mt-4 space-y-1.5">
+                    {project.scripts.map((script) => (
+                      <li key={script.name} className="rounded-[var(--radius-md)] bg-surface-3 px-3 py-2">
+                        <div className="mono text-[13.5px] font-medium text-ink">{script.name}</div>
+                        <div className="mono mt-0.5 truncate text-[12.5px] text-ink-4" title={script.command}>
+                          {script.command}
                         </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Timeline */}
+          <TabsContent value="timeline" className="pt-6">
+            <Section
+              title="Snapshot timeline"
+              description="Every snapshot, and how much the project grew or shrank between them."
+              action={
+                <Button variant="secondary" size="sm" onClick={() => void takeSnapshot()} disabled={backingUp}>
+                  <ShieldPlus className="h-[15px] w-[15px]" />
+                  New snapshot
+                </Button>
+              }
+            >
+              <Card className="p-6">
+                <BackupTimeline
+                  backups={project.backups}
+                  onRestore={setRestoreTarget}
+                  onDelete={setDeleteBackup}
+                />
+              </Card>
+            </Section>
+          </TabsContent>
+
+          {/* Storage */}
+          <TabsContent value="storage" className="pt-6">
+            <Section
+              title="Manage storage"
+              description="What this project is really costing you on disk, and what is safe to remove."
+            >
+              <StoragePanel projectId={project.id} onChanged={() => void load()} />
+            </Section>
+          </TabsContent>
+
+          {/* Files */}
+          <TabsContent value="files" className="pt-6">
+            <Card className="overflow-hidden">
+              {project.fileStructure.length === 0 ? (
+                <EmptyState
+                  title="Nothing to show"
+                  description="The folder could not be read, or it contains only ignored files."
+                />
+              ) : (
+                <FileTree nodes={project.fileStructure} />
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* Dependencies */}
+          <TabsContent value="dependencies" className="pt-6">
+            <div className="grid gap-5 md:grid-cols-2">
+              {[
+                { label: 'Dependencies', items: project.dependencies },
+                { label: 'Dev dependencies', items: project.devDependencies },
+              ].map(({ label, items }) => (
+                <Card key={label} className="overflow-hidden">
+                  <div className="flex items-center justify-between border-b-[0.5px] border-line px-5 py-3.5">
+                    <h3 className="text-[16px] font-semibold tracking-[-0.015em]">{label}</h3>
+                    <Badge tone="neutral" size="sm">
+                      {items.length}
+                    </Badge>
+                  </div>
+                  {items.length === 0 ? (
+                    <p className="px-5 py-6 text-[14px] text-ink-4">None declared.</p>
+                  ) : (
+                    <ul className="max-h-[420px] overflow-y-auto">
+                      {items.map((dep) => (
+                        <li
+                          key={dep.name}
+                          className="flex items-baseline justify-between gap-4 border-b-[0.5px] border-line px-5 py-2 last:border-b-0"
+                        >
+                          <span className="mono min-w-0 truncate text-[13.5px] text-ink">{dep.name}</span>
+                          <span className="mono shrink-0 text-[13px] tabular text-ink-4">{dep.version}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
                 </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* README */}
+          <TabsContent value="readme" className="pt-6">
+            <Card className="p-6 sm:p-8">
+              {project.readme ? (
+                <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.7] text-ink-2">
+                  {project.readme}
+                </pre>
+              ) : (
+                <EmptyState
+                  icon={<FileCode />}
+                  title="No README"
+                  description="Add a README.md to the project folder and refresh — it is worth 12 points of Shelf Score, and it is what you will read in a year."
+                />
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* Notes */}
+          <TabsContent value="notes" className="pt-6">
+            <Card className="p-6">
+              <h3 className="text-[16px] font-semibold tracking-[-0.015em]">Your notes</h3>
+              <p className="mt-1 text-[14px] text-ink-3">
+                Private to CodeShelf — decisions, TODOs, the thing you always forget.
+              </p>
+              <Textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                rows={12}
+                placeholder="Why this project exists, what is half-finished, where the deploy lives…"
+                className="mono mt-4"
+              />
+              <div className="mt-3 flex items-center gap-3">
+                <Button variant="primary" size="sm" onClick={() => void saveNotes()} disabled={savingNotes}>
+                  {savingNotes ? 'Saving…' : 'Save notes'}
+                </Button>
+                {notes !== (project.notes ?? '') && (
+                  <span className="text-[13.5px] text-ink-4">Unsaved changes</span>
+                )}
               </div>
-            </TabsContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </PageShell>
 
-            {/* README */}
-            <TabsContent value="readme">
-              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
-                {project.readme ? (
-                  <pre className="whitespace-pre-wrap font-sans text-[13.5px] text-white/75 leading-relaxed">{project.readme}</pre>
-                ) : (
-                  <EmptyState
-                    icon={<FileCode className="w-8 h-8 text-white/30" />}
-                    title="No README found"
-                    description="Add a README.md to your project to see it here."
-                  />
-                )}
-              </Card>
-            </TabsContent>
-
-            {/* Files */}
-            <TabsContent value="files">
-              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
-                <h3 className="text-[15px] font-semibold mb-4 tracking-tight">File Tree</h3>
-                {project.fileStructure.length === 0 ? (
-                  <p className="text-[12px] text-white/35">No files found</p>
-                ) : (
-                  <div className="space-y-0.5 font-mono text-[12.5px]">
-                    {project.fileStructure.map((item) => (
-                      <div key={item.path} className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg hover:bg-white/[0.06] transition-colors">
-                        {item.type === 'directory' ? <Folder className="w-4 h-4 text-sky-400 shrink-0" /> : <File className="w-4 h-4 text-white/30 shrink-0" />}
-                        <span className="truncate">{item.name}</span>
-                        {item.size && <span className="text-[11px] text-white/25 ml-auto tabular-nums shrink-0">{formatBytes(item.size)}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
-
-            {/* Dependencies */}
-            <TabsContent value="dependencies" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[
-                  { label: 'Dependencies', items: project.dependencies, empty: 'No dependencies' },
-                  { label: 'Dev Dependencies', items: project.devDependencies, empty: 'No dev dependencies' },
-                ].map(({ label, items, empty }) => (
-                  <Card key={label} className="p-5 bg-white/[0.06] border-white/[0.13]">
-                    <h3 className="text-[15px] font-semibold mb-4 tracking-tight">{label} ({items.length})</h3>
-                    {items.length === 0 ? <p className="text-[12px] text-white/35">{empty}</p> : (
-                      <div className="space-y-0.5 max-h-80 overflow-auto no-scrollbar">
-                        {items.map((dep) => (
-                          <div key={dep.name} className="flex justify-between py-2 px-2 rounded-lg hover:bg-white/[0.06] text-[12.5px]">
-                            <span className="font-mono truncate mr-3">{dep.name}</span>
-                            <span className="text-white/35 font-mono tabular-nums shrink-0">{dep.version}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            {/* Backups */}
-            <TabsContent value="backups">
-              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-[15px] font-semibold tracking-tight">Backups</h3>
-                  <Button size="sm" variant="secondary" onClick={handleCreateBackup} disabled={isBackingUp} className="rounded-xl gap-1">
-                    <Plus className="w-3.5 h-3.5" />
-                    New Backup
-                  </Button>
-                </div>
-                {project.backups.length === 0 ? (
-                  <EmptyState
-                    icon={<HardDrive className="w-8 h-8 text-white/30" />}
-                    title="No backups yet"
-                    description="Create a backup to protect your project code."
-                    action={<Button variant="secondary" onClick={handleCreateBackup} disabled={isBackingUp} className="rounded-xl">Create First Backup</Button>}
-                  />
-                ) : (
-                  <div className="space-y-2.5">
-                    {project.backups.map((backup) => (
-                      <div key={backup.id} className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.055] border border-white/[0.09] hover:border-white/[0.13] transition-colors">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                            <CheckCircle className="w-4.5 h-4.5 text-emerald-400" />
-                          </div>
-                          <div>
-                            <p className="text-[13px] font-medium">{formatDate(backup.createdAt)}</p>
-                            <p className="text-[11px] text-white/40 tabular-nums">{formatBytes(backup.size)} · {backup.fileCount} files</p>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="icon" aria-label={`Delete backup from ${formatDate(backup.createdAt)}`} onClick={() => setDeleteBackupId(backup.id)} className="h-8 w-8 text-white/30 hover:text-red-400 hover:bg-red-500/10">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
-
-            {/* Notes */}
-            <TabsContent value="notes">
-              <Card className="p-6 bg-white/[0.06] border-white/[0.13]">
-                <h3 className="text-[15px] font-semibold mb-4 tracking-tight">Project Notes</h3>
-                <div className="space-y-4">
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add personal notes, TODOs, architecture decisions..."
-                    rows={8}
-                    className="w-full rounded-[12px] border border-white/[0.13] bg-white/[0.06] p-4 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#2997ff]/25 focus:border-white/[0.2] transition-all font-mono resize-y"
-                  />
-                  <Button onClick={handleSaveNotes} disabled={isSavingNotes} size="sm" className="rounded-xl gap-1.5">
-                    {isSavingNotes ? 'Saving...' : 'Save Notes'}
-                  </Button>
-                </div>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+      <RestoreDialog
+        open={restoreTarget !== null}
+        onOpenChange={(open) => !open && setRestoreTarget(null)}
+        backup={restoreTarget}
+        projectName={project.name}
+      />
 
       <ConfirmDialog
-        open={deleteBackupId !== null}
-        onOpenChange={(open) => !open && !isDeletingBackup && setDeleteBackupId(null)}
-        title="Delete this backup?"
-        description="The archive will be permanently removed from disk. Your project files will not be affected."
-        confirmLabel="Delete Backup"
+        open={deleteBackup !== null}
+        onOpenChange={(open) => !open && setDeleteBackup(null)}
+        title="Delete this snapshot?"
+        description={deleteBackup ? `Taken ${formatExact(deleteBackup.createdAt)}.` : undefined}
+        detail="The zip file is removed from disk permanently. Your project files are not affected."
+        confirmLabel="Delete snapshot"
         destructive
-        loading={isDeletingBackup}
-        onConfirm={handleDeleteBackup}
+        loading={deletingBackup}
+        onConfirm={removeBackup}
+      />
+
+      <ConfirmDialog
+        open={deleteProject !== null}
+        onOpenChange={(open) => !open && setDeleteProject(null)}
+        title={`Remove “${project.name}” from CodeShelf?`}
+        description="This removes it from your library only."
+        detail="The folder and every file inside it stay exactly where they are on disk."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={async () => {
+          const ok = await actions.remove(project);
+          if (ok) router.push('/projects');
+        }}
       />
     </>
   );
 }
 
-export default function ProjectDetailPage() {
+function Fact({
+  label,
+  value,
+  hint,
+  hintTone,
+  dot,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  hintTone?: 'warn';
+  dot?: string;
+}) {
   return (
-    <Suspense fallback={<LoadingState message="Loading project..." />}>
-      <ProjectDetailContent />
-    </Suspense>
+    <div className="bg-surface px-5 py-4">
+      <div className="text-[12px] font-medium uppercase tracking-[0.07em] text-ink-4">{label}</div>
+      <div className="mt-1 flex items-center gap-1.5">
+        {dot && <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dot }} />}
+        <span className="truncate text-[15.5px] font-medium text-ink">{value}</span>
+      </div>
+      {hint && <div className={cn('mt-0.5 text-[12.5px]', hintTone === 'warn' ? 'text-warn' : 'text-ink-4')}>{hint}</div>}
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b-[0.5px] border-line py-2.5 last:border-b-0">
+      <dt className="shrink-0 text-[13.5px] text-ink-4">{label}</dt>
+      <dd className="min-w-0 truncate text-right text-[14px] font-medium text-ink">{value}</dd>
+    </div>
+  );
+}
+
+/** Two-level tree: enough to recognise a project, not a file browser. */
+function FileTree({ nodes, depth = 0 }: { nodes: FileNode[]; depth?: number }) {
+  return (
+    <ul className={depth === 0 ? 'py-1.5' : undefined}>
+      {nodes.map((node) => (
+        <li key={node.path}>
+          <div
+            className="flex items-center gap-2 px-5 py-[5px] text-[13.5px] transition-colors hover:bg-surface-3"
+            style={{ paddingLeft: 20 + depth * 16 }}
+          >
+            {node.type === 'directory' ? (
+              <Folder className="h-[14px] w-[14px] shrink-0 text-accent-ink" />
+            ) : (
+              <File className="h-[14px] w-[14px] shrink-0 text-ink-5" />
+            )}
+            <span className="mono min-w-0 flex-1 truncate text-ink-2">{node.name}</span>
+            {node.size !== undefined && (
+              <span className="shrink-0 text-[12.5px] tabular text-ink-5">{formatBytes(node.size)}</span>
+            )}
+          </div>
+          {node.children && node.children.length > 0 && depth < 1 && (
+            <FileTree nodes={node.children} depth={depth + 1} />
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

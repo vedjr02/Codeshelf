@@ -34,19 +34,10 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-const VARIANT_STYLES: Record<ToastVariant, { icon: React.ReactNode; ring: string }> = {
-  success: {
-    icon: <CheckCircle2 className="w-[18px] h-[18px] text-[#30d158]" />,
-    ring: 'border-[#30d158]/25',
-  },
-  error: {
-    icon: <AlertCircle className="w-[18px] h-[18px] text-[#ff453a]" />,
-    ring: 'border-[#ff453a]/25',
-  },
-  info: {
-    icon: <Info className="w-[18px] h-[18px] text-[#2997ff]" />,
-    ring: 'border-[#2997ff]/25',
-  },
+const VARIANTS: Record<ToastVariant, { icon: React.ReactNode }> = {
+  success: { icon: <CheckCircle2 className="h-[17px] w-[17px] text-good" /> },
+  error: { icon: <AlertCircle className="h-[17px] w-[17px] text-bad" /> },
+  info: { icon: <Info className="h-[17px] w-[17px] text-accent-ink" /> },
 };
 
 let nextId = 1;
@@ -67,12 +58,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = React.useCallback(
     ({ title, description, variant = 'info', duration }: ToastOptions) => {
       const id = nextId++;
-      const ttl = duration ?? (variant === 'error' ? 6000 : 4000);
-      setToasts((prev) => [...prev.slice(-4), { id, title, description, variant }]);
-      timers.current.set(
-        id,
-        setTimeout(() => dismiss(id), ttl)
-      );
+      const ttl = duration ?? (variant === 'error' ? 6500 : 3800);
+      setToasts((prev) => [...prev.slice(-3), { id, title, description, variant }]);
+      timers.current.set(id, setTimeout(() => dismiss(id), ttl));
     },
     [dismiss]
   );
@@ -97,36 +85,39 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Toast viewport — bottom right, stacked */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2.5 pointer-events-none max-w-[380px]">
-        {toasts.map((t) => {
-          const style = VARIANT_STYLES[t.variant];
-          return (
-            <div
-              key={t.id}
-              role="status"
-              className={cn(
-                'pointer-events-auto flex items-start gap-3 rounded-[14px] border bg-[#232328]/95 backdrop-blur-xl px-4 py-3.5 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)] animate-toast-in',
-                style.ring
+      <div
+        className="pointer-events-none fixed inset-x-4 bottom-5 z-[100] flex flex-col items-center gap-2 sm:inset-x-auto sm:right-5 sm:items-end"
+        aria-live="polite"
+        aria-atomic="false"
+      >
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              'pointer-events-auto flex w-full max-w-[380px] items-start gap-2.5',
+              'rounded-[var(--radius-lg)] border-[0.5px] border-line bg-surface px-3.5 py-3',
+              'shadow-[var(--shadow-pop)] animate-scale-in'
+            )}
+          >
+            <span className="mt-px shrink-0">{VARIANTS[t.variant].icon}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14.5px] font-medium leading-snug text-ink">{t.title}</p>
+              {t.description && (
+                <p className="mt-0.5 break-words text-[13.5px] leading-relaxed text-ink-3">
+                  {t.description}
+                </p>
               )}
-            >
-              <div className="shrink-0 mt-0.5">{style.icon}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-medium text-white leading-snug">{t.title}</p>
-                {t.description && (
-                  <p className="text-[12.5px] text-white/50 mt-0.5 leading-relaxed break-words">{t.description}</p>
-                )}
-              </div>
-              <button
-                onClick={() => dismiss(t.id)}
-                className="shrink-0 text-white/30 hover:text-white/70 transition-colors mt-0.5"
-                aria-label="Dismiss"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
             </div>
-          );
-        })}
+            <button
+              type="button"
+              onClick={() => dismiss(t.id)}
+              className="-mr-1 -mt-0.5 shrink-0 rounded-full p-1 text-ink-4 transition-colors hover:bg-surface-3 hover:text-ink"
+              aria-label="Dismiss notification"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
       </div>
     </ToastContext.Provider>
   );

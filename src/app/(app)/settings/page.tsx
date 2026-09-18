@@ -1,30 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import * as React from 'react';
+import { AlertTriangle, Check, HardDrive, Loader2 } from 'lucide-react';
+import { PageShell, Section } from '@/components/page-shell';
 import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/states';
+import { Button } from '@/components/ui/button';
+import { Field, IconInput } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Settings,
-  Cloud,
-  Shield,
-  Palette,
-  Bell,
-  FolderSync,
-  HardDrive,
-  Info,
-  CheckCircle,
-  AlertTriangle,
-} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/states';
+import { AppearanceToggle } from '@/components/appearance-toggle';
+import { useToast } from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
 
 interface SettingsData {
   backupPath: string;
@@ -33,241 +20,262 @@ interface SettingsData {
   notifications: boolean;
 }
 
-export default function SettingsPage() {
-  const [backupPath, setBackupPath] = useState('/tmp/codeshelf-backups');
-  const [defaultProvider, setDefaultProvider] = useState('local');
-  const [autoBackup, setAutoBackup] = useState(false);
-  const [notifications, setNotifications] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [initialLoaded, setInitialLoaded] = useState(false);
+const DEFAULTS: SettingsData = {
+  backupPath: '/tmp/codeshelf-backups',
+  defaultProvider: 'local',
+  autoBackup: false,
+  notifications: true,
+};
 
-  useEffect(() => {
-    let cancelled = false;
+export default function SettingsPage() {
+  const { success, error: toastError } = useToast();
+  const [settings, setSettings] = React.useState<SettingsData>(DEFAULTS);
+  const [saved, setSaved] = React.useState<SettingsData>(DEFAULTS);
+  const [loaded, setLoaded] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [problem, setProblem] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const signal = { cancelled: false };
     (async () => {
       try {
         const res = await fetch('/api/settings');
-        if (!res.ok) throw new Error('Failed to load settings');
-        const data: SettingsData = await res.json();
-        if (cancelled) return;
-        setBackupPath(data.backupPath || '/tmp/codeshelf-backups');
-        setDefaultProvider(data.defaultProvider || 'local');
-        setAutoBackup(data.autoBackup ?? false);
-        setNotifications(data.notifications ?? true);
-        setLoadError(null);
+        if (!res.ok) throw new Error('Could not load your settings');
+        const data = (await res.json()) as SettingsData;
+        if (signal.cancelled) return;
+        const next: SettingsData = {
+          backupPath: data.backupPath || DEFAULTS.backupPath,
+          defaultProvider: data.defaultProvider || DEFAULTS.defaultProvider,
+          autoBackup: data.autoBackup ?? DEFAULTS.autoBackup,
+          notifications: data.notifications ?? DEFAULTS.notifications,
+        };
+        setSettings(next);
+        setSaved(next);
+        setProblem(null);
       } catch (err) {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load settings');
+        if (!signal.cancelled) setProblem(err instanceof Error ? err.message : 'Could not load your settings');
       } finally {
-        if (!cancelled) setInitialLoaded(true);
+        if (!signal.cancelled) setLoaded(true);
       }
     })();
     return () => {
-      cancelled = true;
+      signal.cancelled = true;
     };
   }, []);
 
-  const handleSave = async () => {
-    if (autoBackup && !backupPath.trim()) {
-      setLoadError('A backup location is required when auto backup is enabled');
+  const dirty = JSON.stringify(settings) !== JSON.stringify(saved);
+
+  const update = <K extends keyof SettingsData>(key: K, value: SettingsData[K]) =>
+    setSettings((prev) => ({ ...prev, [key]: value }));
+
+  const save = async () => {
+    if (!settings.backupPath.trim()) {
+      setProblem('A backup location is required.');
       return;
     }
-    setIsSaving(true);
-    setLoadError(null);
+    setSaving(true);
+    setProblem(null);
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ backupPath: backupPath.trim(), defaultProvider, autoBackup, notifications }),
+        body: JSON.stringify({ ...settings, backupPath: settings.backupPath.trim() }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to save settings');
-      }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Could not save your settings');
+      setSaved({ ...settings, backupPath: settings.backupPath.trim() });
+      success('Settings saved');
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to save settings');
+      setProblem(err instanceof Error ? err.message : 'Could not save your settings');
+      toastError('Could not save settings', err instanceof Error ? err.message : 'Please try again.');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  if (!initialLoaded) {
+  if (!loaded) {
     return (
-      <div className="min-h-screen">
-        <div className="p-5 sm:p-10 max-w-5xl mx-auto space-y-7" aria-busy="true" aria-label="Loading settings">
-          <div className="space-y-3"><Skeleton className="h-3 w-28" /><Skeleton className="h-10 w-48" /><Skeleton className="h-5 w-80 max-w-full" /></div>
-          <Skeleton className="h-64 w-full rounded-[18px]" />
-          <Skeleton className="h-48 w-full rounded-[18px]" />
-          <Skeleton className="h-48 w-full rounded-[18px]" />
+      <PageShell title="Settings" width="narrow">
+        <div className="space-y-5" aria-busy="true">
+          <Skeleton className="h-[180px] w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-[150px] w-full rounded-[var(--radius-xl)]" />
+          <Skeleton className="h-[200px] w-full rounded-[var(--radius-xl)]" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="p-5 sm:p-10 max-w-5xl mx-auto">
-          {/* Header */}
-          <div className="mb-10 animate-rise">
-            <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
-              <Settings className="w-4 h-4" />
-              Configuration
-            </span>
-            <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
-              Settings
-            </h1>
-            <p className="text-[16px] text-[#9a9aa3] mt-1">
-              Configure backup storage, preferences, and app behavior
-            </p>
-          </div>
-
-          {loadError && (
-            <div className="flex items-start gap-2.5 text-[13px] text-[#ff6961] bg-[#ff453a]/[0.08] border border-[#ff453a]/20 p-3.5 rounded-[12px] mb-6 animate-fade">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              {loadError}
-            </div>
-          )}
-
-          <div className="space-y-7 stagger">
-            {/* Backup Settings */}
-            <Card className="p-7 bg-white/[0.06] border-white/[0.13]">
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
-                  <Cloud className="w-4 h-4 text-sky-400" />
-                </div>
-                <div>
-                  <h3 className="text-[16px] font-semibold tracking-tight">Backup Storage</h3>
-                  <p className="text-[11.5px] text-white/35">Configure where project backups are stored</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Default Backup Location</label>
-                  <Input
-                    value={backupPath}
-                    onChange={(e) => setBackupPath(e.target.value)}
-                    placeholder="/path/to/backups"
-                    className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px] font-mono"
-                  />
-                  <p className="text-[11px] text-white/30 mt-1.5">Local directory where project backups will be stored</p>
-                </div>
-
-                <div>
-                  <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Storage Provider</label>
-                  <Select value={defaultProvider} onValueChange={setDefaultProvider}>
-                    <SelectTrigger className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1f1f23] border-white/[0.14]">
-                      <SelectItem value="local">
-                        <span className="flex items-center gap-2">
-                          <HardDrive className="w-3.5 h-3.5 text-white/40" />
-                          Local Storage
-                        </span>
-                      </SelectItem>
-
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between py-3 border-t border-white/[0.05]">
-                  <div className="flex items-center gap-3">
-                    <FolderSync className="w-4 h-4 text-white/30" />
-                    <div>
-                      <p className="text-[13px] font-medium">Auto Backup</p>
-                      <p className="text-[11.5px] text-white/35">Automatically backup projects weekly</p>
-                    </div>
-                  </div>
-                  <Switch aria-label="Enable automatic weekly backups" checked={autoBackup} onCheckedChange={setAutoBackup} />
-                </div>
-              </div>
-            </Card>
-
-            {/* Preferences */}
-            <Card className="p-7 bg-white/[0.06] border-white/[0.13]">
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-[#2997ff]/10 flex items-center justify-center">
-                  <Palette className="w-4 h-4 text-[#2997ff]" />
-                </div>
-                <div>
-                  <h3 className="text-[16px] font-semibold tracking-tight">Preferences</h3>
-                  <p className="text-[11.5px] text-white/35">Customize app behavior and appearance</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-4 h-4 text-white/30" />
-                    <div>
-                      <p className="text-[13px] font-medium">Desktop Notifications</p>
-                      <p className="text-[11.5px] text-white/35">Get notified when backups complete</p>
-                    </div>
-                  </div>
-                  <Switch aria-label="Enable desktop backup notifications" checked={notifications} onCheckedChange={setNotifications} />
-                </div>
-
-                <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
-                  <div className="flex items-center gap-3">
-                    <Shield className="w-4 h-4 text-white/30" />
-                    <div>
-                      <p className="text-[13px] font-medium">Exclude Patterns</p>
-                      <p className="text-[11.5px] text-white/35">Default patterns to exclude from backups</p>
-                    </div>
-                  </div>
-                  <span className="text-[12px] text-white/35">Applied automatically</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* About */}
-            <Card className="p-7 bg-white/[0.06] border-white/[0.13]">
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <Info className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-[16px] font-semibold tracking-tight">About</h3>
-                  <p className="text-[11.5px] text-white/35">App version and system info</p>
-                </div>
-              </div>
-              <div className="space-y-0">
-                {[
-                  { k: 'Version', v: '1.0.0' },
-                  { k: 'Database', v: 'PostgreSQL' },
-                  { k: 'Framework', v: 'Next.js 16' },
-                  { k: 'Runtime', v: 'Node.js' },
-                ].map(({ k, v }) => (
-                  <div key={k} className="flex justify-between py-2.5 border-b border-white/[0.05] last:border-0">
-                    <span className="text-[12.5px] text-white/40">{k}</span>
-                    <span className="text-[12.5px] font-medium">{v}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Save */}
-            <div className="flex justify-end animate-rise" style={{ animationDelay: '0.3s' }}>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || saved}
-                className="rounded-full gap-1.5 px-7 disabled:opacity-50"
-              >
-                {saved ? (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Saved
-                  </>
-                ) : isSaving ? (
-                  'Saving...'
-                ) : (
-                  'Save Changes'
-                )}
-              </Button>
-            </div>
-          </div>
+    <PageShell
+      title="Settings"
+      width="narrow"
+      subtitle="Where snapshots go, how CodeShelf looks, and what it does on its own."
+      actions={
+        <Button variant="primary" size="pill" onClick={() => void save()} disabled={saving || !dirty}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? null : <Check className="h-4 w-4" />}
+          {saving ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
+        </Button>
+      }
+    >
+      {problem && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-[var(--radius-md)] bg-bad-tint px-3.5 py-3 text-[14px] text-bad">
+          <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
+          <span>{problem}</span>
         </div>
+      )}
+
+      <div className="space-y-8">
+        {/* ---- Appearance ---------------------------------------------- */}
+        <Section title="Appearance" description="CodeShelf follows your system by default.">
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[15px] font-medium text-ink">Theme</p>
+                <p className="mt-0.5 text-[13.5px] text-ink-3">
+                  Light, dark, or whatever your Mac is doing right now.
+                </p>
+              </div>
+              <div className="w-[200px] shrink-0">
+                <AppearanceToggle size="md" />
+              </div>
+            </div>
+          </Card>
+        </Section>
+
+        {/* ---- Snapshots ----------------------------------------------- */}
+        <Section title="Snapshots" description="Where archives are written, and what gets left out.">
+          <Card className="divide-y-[0.5px] divide-line">
+            <div className="p-5">
+              <Field
+                label="Backup location"
+                htmlFor="backup-path"
+                hint="Point this somewhere durable — an external drive or a synced folder. The default lives in /tmp and your operating system may clear it."
+              >
+                <IconInput
+                  id="backup-path"
+                  icon={<HardDrive />}
+                  value={settings.backupPath}
+                  onChange={(event) => update('backupPath', event.target.value)}
+                  placeholder="/Volumes/Backup/codeshelf"
+                  className="mono"
+                />
+              </Field>
+              {settings.backupPath.trim().startsWith('/tmp') && (
+                <p className="mt-2.5 flex items-start gap-2 text-[13.5px] text-warn">
+                  <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+                  Snapshots in /tmp can be deleted by macOS on restart. Choose a permanent location.
+                </p>
+              )}
+            </div>
+
+            <div className="p-5">
+              <Field label="Storage provider" htmlFor="provider">
+                <Select value={settings.defaultProvider} onValueChange={(value) => update('defaultProvider', value)}>
+                  <SelectTrigger id="provider" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="local">This Mac</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <p className="mt-2 text-[13.5px] text-ink-4">
+                Everything stays on this machine. Cloud providers are not wired up yet.
+              </p>
+            </div>
+
+            <Toggle
+              label="Automatic weekly snapshots"
+              description="Not yet enforced — the preference is stored, but nothing schedules it."
+              checked={settings.autoBackup}
+              onChange={(value) => update('autoBackup', value)}
+              pending
+            />
+
+            <Toggle
+              label="Notify when a snapshot finishes"
+              description="Shows a toast when a backup completes or fails."
+              checked={settings.notifications}
+              onChange={(value) => update('notifications', value)}
+            />
+
+            <div className="p-5">
+              <p className="text-[15px] font-medium text-ink">Always excluded</p>
+              <p className="mt-0.5 text-[13.5px] text-ink-3">
+                These never enter an archive, which is why snapshots stay small.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {['node_modules', '.git', 'dist', 'build', '.next', 'target', '__pycache__', '.venv', 'coverage', '.cache'].map(
+                  (pattern) => (
+                    <span
+                      key={pattern}
+                      className="mono rounded-full bg-surface-3 px-2 py-0.5 text-[12.5px] text-ink-3"
+                    >
+                      {pattern}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+          </Card>
+        </Section>
+
+        {/* ---- About --------------------------------------------------- */}
+        <Section title="About">
+          <Card className="p-5">
+            <dl className="space-y-0">
+              {[
+                { k: 'Version', v: '1.0' },
+                { k: 'Storage', v: 'PostgreSQL, local' },
+                { k: 'Framework', v: 'Next.js 16 · React 19' },
+                { k: 'Archives', v: 'Zip, written by this machine' },
+              ].map((row) => (
+                <div
+                  key={row.k}
+                  className="flex items-baseline justify-between gap-4 border-b-[0.5px] border-line py-2.5 last:border-b-0"
+                >
+                  <dt className="text-[14px] text-ink-4">{row.k}</dt>
+                  <dd className="text-[14px] font-medium text-ink">{row.v}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-4 text-[13.5px] leading-relaxed text-ink-4">
+              CodeShelf runs entirely on this machine. Your library, your notes and your archives never leave it.
+            </p>
+          </Card>
+        </Section>
       </div>
+    </PageShell>
+  );
+}
+
+function Toggle({
+  label,
+  description,
+  checked,
+  onChange,
+  pending,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  pending?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-5">
+      <div className="min-w-0">
+        <p className={cn('text-[15px] font-medium text-ink')}>
+          {label}
+          {pending && (
+            <span className="ml-2 rounded-full bg-surface-3 px-1.5 py-0.5 text-[11.5px] font-medium uppercase tracking-[0.06em] text-ink-4">
+              Not active
+            </span>
+          )}
+        </p>
+        <p className="mt-0.5 text-[13.5px] leading-relaxed text-ink-3">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
+    </div>
   );
 }

@@ -1,206 +1,301 @@
 @import "tailwindcss";
 
+/* ============================================================
+   CodeShelf design system
+   ------------------------------------------------------------
+   One source of truth. Every colour, radius, shadow and easing
+   used by the app is a token declared here. Components never
+   hardcode a hex value, and there are no `!important` overrides
+   translating one theme into another.
+   ============================================================ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* ---- Surfaces (light) ---------------------------------- */
+  --color-canvas: #f6f6f8;
+  --color-canvas-deep: #eeeef1;
+  --color-surface: #ffffff;
+  --color-surface-2: #fafafb;
+  --color-surface-3: #f1f1f4;
+  --color-overlay: rgba(255, 255, 255, 0.72);
+  --color-scrim: rgba(22, 22, 24, 0.32);
+
+  /* ---- Ink ----------------------------------------------
+     Every step that carries text clears WCAG AA (4.5:1) against
+     the lightest surface it can sit on. `ink-5` is the exception
+     and is only for non-text marks — dots, chevrons, disabled
+     glyphs — where 3:1 is the bar. */
+  --color-ink: #1d1d1f;
+  --color-ink-2: #45454a;
+  --color-ink-3: #58585f;
+  --color-ink-4: #6d6d75;
+  --color-ink-5: #8a8a92;
+  --color-on-accent: #ffffff;
+  /* Text on a filled status colour (destructive button, menu row). */
+  --color-on-status: #ffffff;
+
+  /* ---- Lines -------------------------------------------- */
+  --color-line: rgba(0, 0, 0, 0.08);
+  --color-line-2: rgba(0, 0, 0, 0.14);
+  --color-line-3: rgba(0, 0, 0, 0.22);
+
+  /* ---- Accents ------------------------------------------
+     `accent` is the fill, and white-on-accent clears AA. Accent
+     *text* uses `accent-ink`, because a colour dark enough to
+     carry white can be too dark to read on a light surface, and
+     in dark mode the reverse is true. */
+  --color-accent: #0067d2;
+  --color-accent-ink: #0060c4;
+  --color-accent-hover: #0071e3;
+  --color-accent-press: #005cbd;
+  --color-accent-tint: rgba(0, 103, 210, 0.1);
+  --color-accent-line: rgba(0, 103, 210, 0.28);
+
+  --color-good: #116c35;
+  --color-good-tint: rgba(17, 108, 53, 0.11);
+  --color-warn: #8f5400;
+  --color-warn-tint: rgba(143, 84, 0, 0.11);
+  --color-bad: #c2000f;
+  --color-bad-tint: rgba(194, 0, 15, 0.09);
+  --color-info: #0060c4;
+  --color-violet: #7038bd;
+  --color-violet-tint: rgba(112, 56, 189, 0.1);
+
+  /* ---- Type --------------------------------------------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", "Segoe UI", Roboto, Inter, system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, SFMono-Regular, "JetBrains Mono",
+    "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* ---- Radii -------------------------------------------- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-3xl: 30px;
+
+  /* ---- Elevation ---------------------------------------- */
+  --shadow-hairline: 0 0 0 0.5px var(--color-line);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px -22px rgba(0, 0, 0, 0.18);
+  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.05), 0 18px 44px -28px rgba(0, 0, 0, 0.26);
+  --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.06), 0 32px 72px -32px rgba(0, 0, 0, 0.34);
+  --shadow-inset-top: inset 0 0.5px 0 rgba(255, 255, 255, 0.7);
+
+  /* ---- Motion (Apple's standard curves) ------------------ */
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- Layout ------------------------------------------- */
+  --spacing-sidebar: 264px;
+  --spacing-sidebar-rail: 68px;
+
+  /* ---- Animations ----------------------------------------
+     Declared as theme values, not hand-written classes, so
+     Tailwind emits real `animate-*` utilities. Radix drives its
+     entrances through `data-[state=open]:` variants, and a
+     variant can only wrap a utility Tailwind knows about. */
+  --animate-rise: cs-rise 0.5s var(--ease-standard) both;
+  --animate-fade: cs-fade 0.3s ease both;
+  --animate-scale-in: cs-scale-in 0.28s var(--ease-standard) both;
+  --animate-slide-from-left: cs-slide-from-left 0.32s var(--ease-standard) both;
+  --animate-breathe: cs-breathe 2.4s ease-in-out infinite;
+}
+
+/* ------------------------------------------------------------
+   Dark theme — same token names, different values.
+   ------------------------------------------------------------ */
+.dark {
+  --color-canvas: #0a0a0b;
+  --color-canvas-deep: #000000;
+  --color-surface: #16161a;
+  --color-surface-2: #1c1c21;
+  --color-surface-3: #23232a;
+  --color-overlay: rgba(28, 28, 33, 0.72);
+  --color-scrim: rgba(0, 0, 0, 0.56);
+
+  --color-ink: #f5f5f7;
+  --color-ink-2: #c8c8d0;
+  --color-ink-3: #a4a4ae;
+  --color-ink-4: #898993;
+  --color-ink-5: #6c6c76;
+
+  --color-on-status: #14141a;
+
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-2: rgba(255, 255, 255, 0.16);
+  --color-line-3: rgba(255, 255, 255, 0.26);
+
+  --color-accent: #0b74e0;
+  --color-accent-ink: #4da3ff;
+  --color-accent-hover: #0d80f2;
+  --color-accent-press: #0a68cc;
+  --color-accent-tint: rgba(77, 163, 255, 0.16);
+  --color-accent-line: rgba(77, 163, 255, 0.38);
+
+  --color-good: #30d158;
+  --color-good-tint: rgba(48, 209, 88, 0.16);
+  --color-warn: #ff9f0a;
+  --color-warn-tint: rgba(255, 159, 10, 0.16);
+  --color-bad: #ff6961;
+  --color-bad-tint: rgba(255, 105, 97, 0.12);
+  --color-info: #4da3ff;
+  --color-violet: #d38cf7;
+  --color-violet-tint: rgba(211, 140, 247, 0.12);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 28px -22px rgba(0, 0, 0, 0.9);
+  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.6), 0 18px 44px -26px rgba(0, 0, 0, 0.95);
+  --shadow-pop: 0 2px 8px rgba(0, 0, 0, 0.6), 0 32px 72px -28px rgba(0, 0, 0, 1);
+  --shadow-inset-top: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+
 @layer base {
-  :root {
-    --accent: #0071e3;
-    --background: #f5f5f7;
-    --foreground: #1d1d1f;
-    --text-secondary: #6e6e73;
-    --text-tertiary: #86868b;
-    --surface: rgba(255, 255, 255, 0.72);
-    --surface-hover: rgba(255, 255, 255, 0.92);
-    --surface-raised: #ffffff;
-    --border: rgba(0, 0, 0, 0.10);
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --focus-ring: rgba(0, 113, 227, 0.55);
-  }
-
   * {
-    border-color: var(--border);
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
+    border-color: var(--color-line);
   }
 
   html {
-    color-scheme: light;
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
   }
 
   body {
-    background-color: var(--background);
-    background-image: radial-gradient(80% 45% at 50% -10%, rgba(255,255,255,0.95), transparent 70%);
-    /* Apple-style system font stack — SF Pro on macOS/iOS, Inter fallbacks elsewhere */
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-      "Helvetica Neue", "Segoe UI", Roboto, Inter, sans-serif;
-    color: #1d1d1f;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.5;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    letter-spacing: -0.01em;
     text-rendering: optimizeLegibility;
+    font-synthesis-weight: none;
+  }
+
+  /* Large type gets tighter tracking, the way SF Pro Display is set. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Never show the ring for pointer interaction. */
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 
   ::selection {
-    background-color: rgba(41, 151, 255, 0.35);
-    color: #fff;
+    background-color: var(--color-accent-tint);
+    color: var(--color-ink);
   }
 
-  /* Slim, blended scrollbar */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  kbd {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Overlay scrollbars, Mac style. */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
   }
-
   ::-webkit-scrollbar-track {
     background: transparent;
   }
-
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.22);
+    background: var(--color-line-2);
     border-radius: 999px;
-    border: 3px solid transparent;
+    border: 4px solid transparent;
     background-clip: content-box;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.35);
+    background: var(--color-line-3);
     background-clip: content-box;
   }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 /* ============================================================
-   Apple-style primitives
+   Materials
    ============================================================ */
 
-/* Frosted surfaces */
-.glass {
-  background-color: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+/* Translucent chrome — sidebars, toolbars, palettes. */
+.material {
+  background-color: var(--color-overlay);
+  backdrop-filter: saturate(180%) blur(28px);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
 }
 
-.glass-hover:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* A plain card: opaque, hairline, barely-there shadow. */
+.panel {
+  background-color: var(--color-surface);
+  border: 0.5px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
 
-/* Raised card */
-.surface-card {
-  background-color: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 18px;
+.panel-flat {
+  background-color: var(--color-surface);
+  border: 0.5px solid var(--color-line);
+  border-radius: var(--radius-xl);
 }
 
-.surface-card:hover {
-  background-color: rgba(255, 255, 255, 0.085);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Hairline divider */
+/* Hairline rule that stays 1 device pixel at any DPR. */
 .hairline {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.13);
+  height: 0.5px;
+  background-color: var(--color-line);
+  border: 0;
 }
 
-/* Accent text */
-.text-accent { color: #2997ff; }
-
-/* Subtle text gradient for headings (kept soft, Apple-esque) */
-.text-gradient {
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  background-image: linear-gradient(135deg, #f7f7fa 0%, #2997ff 120%);
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
-/* ============================================================
-   Motion
-   ============================================================ */
-
-/* Keep interaction motion subtle and respect user preferences. */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: 0;
 }
 
-.animate-rise {
-  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* Truncate a path from the left — the end is the useful part. */
+.path-tail {
+  direction: rtl;
+  text-align: left;
+  unicode-bidi: plaintext;
 }
 
-.animate-fade {
-  animation: fade 0.4s ease both;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 3s ease-in-out infinite;
-}
-
-.animate-float {
-  animation: float 7s ease-in-out infinite;
-}
-
-/* Stagger — children rise in sequentially */
-.stagger > * {
-  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.stagger > *:nth-child(1) { animation-delay: 0s; }
-.stagger > *:nth-child(2) { animation-delay: 0.04s; }
-.stagger > *:nth-child(3) { animation-delay: 0.08s; }
-.stagger > *:nth-child(4) { animation-delay: 0.12s; }
-.stagger > *:nth-child(5) { animation-delay: 0.16s; }
-.stagger > *:nth-child(6) { animation-delay: 0.2s; }
-.stagger > *:nth-child(7) { animation-delay: 0.24s; }
-.stagger > *:nth-child(8) { animation-delay: 0.28s; }
-.stagger > *:nth-child(9) { animation-delay: 0.32s; }
-.stagger > *:nth-child(10) { animation-delay: 0.36s; }
-
-/* Mobile drawer slide */
-.animate-slide-in-right {
-  animation: slide-in-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(-24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Toast entrance */
-.animate-toast-in {
-  animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Language dot glow */
-.lang-dot {
-  box-shadow: 0 0 8px -2px currentColor;
-}
-
-/* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -209,165 +304,111 @@
   scrollbar-width: none;
 }
 
-@keyframes rise {
+/* ============================================================
+   Motion
+   ============================================================ */
+
+@keyframes cs-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
-@keyframes fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes cs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+@keyframes cs-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+@keyframes cs-slide-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
 }
 
-/* ============================================================
-   CodeShelf visual direction
-   ============================================================ */
-
-[class~="bg-[#0a84ff]"],
-[class~="bg-[#2997ff]"],
-[class~="bg-[#30d158]"] {
-  color: #ffffff !important;
+@keyframes cs-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
-.codeshelf-auth {
-  background: #f5f5f7;
+@keyframes cs-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }
 
-.codeshelf-auth-panel {
-  background: rgba(255, 255, 255, 0.48);
-  border-color: rgba(0, 0, 0, 0.08) !important;
+/* Sequential reveal for a list or grid of siblings. */
+.stagger > * {
+  animation: cs-rise 0.5s var(--ease-standard) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 35ms; }
+.stagger > *:nth-child(3) { animation-delay: 70ms; }
+.stagger > *:nth-child(4) { animation-delay: 105ms; }
+.stagger > *:nth-child(5) { animation-delay: 140ms; }
+.stagger > *:nth-child(6) { animation-delay: 175ms; }
+.stagger > *:nth-child(7) { animation-delay: 210ms; }
+.stagger > *:nth-child(8) { animation-delay: 245ms; }
+.stagger > *:nth-child(n + 9) { animation-delay: 280ms; }
+
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-surface-3) 25%,
+    var(--color-surface-2) 37%,
+    var(--color-surface-3) 63%
+  );
+  background-size: 200% 100%;
+  animation: cs-shimmer 1.4s linear infinite;
 }
 
-.codeshelf-sidebar {
-  background: rgba(250, 250, 252, 0.84) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 12px 0 40px -32px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(28px) saturate(1.35);
-  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-.codeshelf-main {
-  background: transparent;
-}
-
-.codeshelf-mobile-bar {
-  background: rgba(250, 250, 252, 0.86) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-}
-
-/* Translate the existing utility surfaces into a light Apple-like material system. */
-[class~="bg-white/[0.05]"],
-[class~="bg-white/[0.06]"],
-[class~="bg-white/[0.07]"],
-[class~="bg-white/[0.08]"] {
-  background-color: rgba(255, 255, 255, 0.72) !important;
-}
-
-[class~="bg-white/[0.045]"],
-[class~="bg-white/[0.055]"] {
-  background-color: rgba(255, 255, 255, 0.58) !important;
-}
-
-[class~="hover:bg-white/[0.05]"]:hover,
-[class~="hover:bg-white/[0.06]"]:hover,
-[class~="hover:bg-white/[0.075]"]:hover,
-[class~="hover:bg-white/[0.08]"]:hover,
-[class~="hover:bg-white/[0.09]"]:hover,
-[class~="hover:bg-white/[0.1]"]:hover,
-[class~="hover:bg-white/[0.12]"]:hover,
-[class~="hover:bg-white/[0.14]"]:hover {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-}
-
-[class~="border-white/[0.05]"],
-[class~="border-white/[0.08]"],
-[class~="border-white/[0.09]"],
-[class~="border-white/[0.1]"],
-[class~="border-white/[0.11]"],
-[class~="border-white/[0.13]"],
-[class~="border-white/[0.14]"],
-[class~="border-white/[0.16]"] {
-  border-color: rgba(0, 0, 0, 0.09) !important;
-}
-
-[class~="text-white"],
-[class~="text-white/80"],
-[class~="text-white/85"],
-[class~="text-white/70"],
-[class~="text-white/60"],
-[class~="text-white/50"],
-[class~="text-white/45"],
-[class~="text-white/40"],
-[class~="text-white/35"],
-[class~="text-white/30"],
-[class~="text-white/25"],
-[class~="text-white/20"] {
-  color: #1d1d1f !important;
-}
-
-[class~="text-white/80"],
-[class~="text-white/70"],
-[class~="text-white/60"] { color: #3d3d42 !important; }
-[class~="text-white/50"],
-[class~="text-white/45"],
-[class~="text-white/40"] { color: #6e6e73 !important; }
-[class~="text-white/35"],
-[class~="text-white/30"],
-[class~="text-white/25"],
-[class~="text-white/20"] { color: #86868b !important; }
-
-[class~="text-[#9a9aa3]"],
-[class~="text-[#86868b]"] { color: #6e6e73 !important; }
-
-.codeshelf-card,
-.surface-card,
-.glass {
-  background: rgba(255, 255, 255, 0.74);
-  border-color: rgba(0, 0, 0, 0.09);
-  box-shadow: 0 12px 36px -28px rgba(0, 0, 0, 0.3);
-}
-
-.codeshelf-card:hover,
-.surface-card:hover,
-.glass-hover:hover {
-  background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(0, 0, 0, 0.14);
-}
-
-[class~="bg-[#1f1f23]"],
-[class~="bg-[#1f1f23]/95"],
-[class~="bg-[#232328]/95"],
-[class~="bg-zinc-900/95"] {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-  color: #1d1d1f !important;
-  border-color: rgba(0, 0, 0, 0.12) !important;
-}
-
-.codeshelf-input {
-  background: rgba(255, 255, 255, 0.78) !important;
-  border-color: rgba(0, 0, 0, 0.12) !important;
-  color: #1d1d1f !important;
-}
-
-.codeshelf-input::placeholder { color: #86868b !important; }
-
-::selection {
-  background-color: rgba(0, 113, 227, 0.18);
-  color: #1d1d1f;
+/* Suppress transitions while the theme is switching so tokens
+   cross over in one frame instead of 30 separate fades. */
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition: none !important;
 }

@@ -1,15 +1,24 @@
 'use client';
 
 import * as React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
+  /** Extra detail the person should read before agreeing. */
+  detail?: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -17,11 +26,16 @@ interface ConfirmDialogProps {
   onConfirm: () => void | Promise<void>;
 }
 
+/**
+ * A Mac alert: title, one line of consequence, two buttons on the right.
+ * No warning triangle — the wording carries the weight.
+ */
 export function ConfirmDialog({
   open,
   onOpenChange,
   title,
   description,
+  detail,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   destructive = false,
@@ -42,42 +56,34 @@ export function ConfirmDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[400px] bg-[#1f1f23] border-white/[0.14] rounded-[18px] p-6 gap-0">
-        <DialogHeader className="space-y-0">
-          <div className="flex items-start gap-3.5">
-            <div
-              className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${
-                destructive ? 'bg-[#ff453a]/12' : 'bg-[#2997ff]/12'
-              }`}
-            >
-              <AlertTriangle className={`w-5 h-5 ${destructive ? 'text-[#ff453a]' : 'text-[#2997ff]'}`} />
-            </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-[16px] font-semibold tracking-tight leading-snug">{title}</DialogTitle>
-              {description && (
-                <DialogDescription className="text-[13px] text-white/45 mt-1.5 leading-relaxed">
-                  {description}
-                </DialogDescription>
-              )}
-            </div>
-          </div>
+    <Dialog open={open} onOpenChange={(next) => !isBusy && onOpenChange(next)}>
+      <DialogContent className="max-w-[400px]" hideClose>
+        <DialogHeader className="pr-0">
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className="flex justify-end gap-2.5 mt-6">
-          <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)} disabled={isBusy} className="rounded-[10px]">
+
+        {detail && (
+          <div className="mt-4 rounded-[var(--radius-md)] bg-surface-3 px-3 py-2.5 text-[13.5px] leading-relaxed text-ink-2">
+            {detail}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)} disabled={isBusy}>
             {cancelLabel}
           </Button>
           <Button
-            variant={destructive ? 'danger' : 'default'}
+            variant={destructive ? 'destructive' : 'primary'}
             size="sm"
             onClick={handleConfirm}
             disabled={isBusy}
-            className="rounded-[10px] gap-1.5 min-w-[90px]"
+            className="min-w-[96px]"
           >
-            {isBusy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {isBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {confirmLabel}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

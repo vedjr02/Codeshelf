@@ -5,33 +5,66 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors',
+  'inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap [&>svg]:shrink-0',
   {
     variants: {
-      variant: {
-        default: 'bg-white/[0.08] text-white',
-        secondary: 'bg-white/[0.05] text-white/70',
-        success: 'bg-[#30d158]/15 text-[#30d158]',
-        warning: 'bg-[#ffd60a]/15 text-[#ffd60a]',
-        danger: 'bg-[#ff453a]/15 text-[#ff453a]',
-        info: 'bg-[#0a84ff]/15 text-[#0a84ff]',
-        language: 'bg-white/10 text-white/80',
+      tone: {
+        neutral: 'bg-surface-3 text-ink-2',
+        quiet: 'bg-transparent text-ink-3 border-[0.5px] border-line',
+        accent: 'bg-accent-tint text-accent-ink',
+        good: 'bg-good-tint text-good',
+        warn: 'bg-warn-tint text-warn',
+        bad: 'bg-bad-tint text-bad',
+        violet: 'bg-violet-tint text-violet',
+      },
+      size: {
+        sm: 'h-[19px] px-2 text-[12px] [&>svg]:h-3 [&>svg]:w-3',
+        md: 'h-[23px] px-2.5 text-[13px] [&>svg]:h-[13px] [&>svg]:w-[13px]',
       },
     },
-    defaultVariants: {
-      variant: 'default',
-    },
+    defaultVariants: { tone: 'neutral', size: 'md' },
   }
 );
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, tone, size, ...props }: BadgeProps) {
+  return <span className={cn(badgeVariants({ tone, size }), className)} {...props} />;
+}
+
+/**
+ * Language / tag chip that carries its own colour. The dot does the
+ * colouring so the text stays at full contrast against any hue.
+ */
+function DotBadge({
+  color,
+  children,
+  size = 'md',
+  className,
+}: {
+  color: string;
+  children: React.ReactNode;
+  size?: 'sm' | 'md';
+  className?: string;
+}) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <span
+      className={cn(
+        badgeVariants({ tone: 'neutral', size }),
+        'bg-surface-3 text-ink-2',
+        className
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn('rounded-full', size === 'sm' ? 'h-1.5 w-1.5' : 'h-[7px] w-[7px]')}
+        style={{ backgroundColor: color }}
+      />
+      {children}
+    </span>
   );
 }
 
-export { Badge, badgeVariants };
+export { Badge, DotBadge, badgeVariants };

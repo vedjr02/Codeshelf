@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { createBackup, deleteBackup, ensureBackupDirectory, restoreBackup } from '@/lib/backup';
 import { getSessionUser } from '@/lib/session';
+import { desktopOnlyResponse, isDesktopHost } from '@/lib/desktop';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         project: {
-          select: { id: true, name: true, path: true },
+          select: { id: true, name: true, path: true, language: true, framework: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -45,6 +46,8 @@ export async function GET(request: NextRequest) {
 // POST /api/backup - Create a new backup
 export async function POST(request: NextRequest) {
   try {
+    if (!isDesktopHost()) return desktopOnlyResponse('Creating a backup zips the project folder on disk.');
+
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -147,6 +150,8 @@ export async function POST(request: NextRequest) {
 // PUT /api/backup - Restore a backup to a chosen destination directory
 export async function PUT(request: NextRequest) {
   try {
+    if (!isDesktopHost()) return desktopOnlyResponse('Restoring a backup writes files to disk.');
+
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -194,6 +199,8 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/backup - Delete a backup
 export async function DELETE(request: NextRequest) {
   try {
+    if (!isDesktopHost()) return desktopOnlyResponse('Deleting a backup removes the archive from disk.');
+
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

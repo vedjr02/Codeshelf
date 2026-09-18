@@ -29,8 +29,8 @@ export function formatDate(date: Date | string | null | undefined): string {
 export function formatRelativeTime(date: Date | string | null | undefined): string {
   if (!date) return 'Never';
   const d = new Date(date);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
+  const diff = Date.now() - d.getTime();
+  if (Number.isNaN(diff)) return 'Never';
 
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
@@ -41,10 +41,41 @@ export function formatRelativeTime(date: Date | string | null | undefined): stri
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'Yesterday';
   if (days < 7) return `${days}d ago`;
-  if (weeks < 4) return `${weeks}w ago`;
+  if (weeks < 5) return `${weeks}w ago`;
   if (months < 12) return `${months}mo ago`;
   return formatDate(d);
+}
+
+/** Full timestamp for tooltips, where the exact moment matters. */
+export function formatExact(date: Date | string | null | undefined): string {
+  if (!date) return 'Never';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return 'Never';
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Collapses a home directory to `~`, the way every Mac tool prints paths.
+ * The home directory is not knowable in the browser, so this matches the
+ * shape instead: /Users/<name>/ and /home/<name>/.
+ */
+export function prettyPath(path: string | null | undefined): string {
+  if (!path) return '';
+  return path.replace(/^\/(?:Users|home)\/[^/]+/, '~').replace(/^C:\\Users\\[^\\]+/i, '~');
+}
+
+/** "3 projects" / "1 project" without a ternary at every call site. */
+export function plural(count: number, singular: string, pluralForm?: string): string {
+  return `${count} ${count === 1 ? singular : pluralForm ?? `${singular}s`}`;
 }
 
 export function getLanguageColor(language: string | null | undefined): string {

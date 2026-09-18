@@ -3,8 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled connection: serverless opens a new client per invocation.
+  url       = env("DATABASE_URL")
+  // Direct connection: schema pushes and migrations cannot run through a pooler.
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -25,6 +28,7 @@ model User {
   backups     Backup[]
   setting     Setting?
   cloudConnections CloudConnection[]
+  smartCollections SmartCollection[]
 }
 
 model Account {
@@ -232,4 +236,22 @@ model Setting {
   updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// A saved set of rules rather than a saved list of projects: the
+/// membership is recomputed on every read, so it never goes stale.
+model SmartCollection {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  icon      String?  @default("sparkles")
+  /// JSON: { match: "all" | "any", conditions: [{ field, op, value }] }
+  rules     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
 }

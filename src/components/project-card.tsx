@@ -1,194 +1,128 @@
 'use client';
 
-import { formatBytes, formatRelativeTime, getLanguageColor, getFrameworkColor } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-import {
-  Star,
-  GitBranch,
-  ExternalLink,
-  Archive,
-  MoreHorizontal,
-  FolderSync,
-  ShieldCheck,
-  FolderOpen,
-} from 'lucide-react';
+import * as React from 'react';
 import Link from 'next/link';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+import { GitBranch, Star } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { DotBadge } from '@/components/ui/badge';
+import { ScoreChip } from '@/components/score';
+import { ProjectMenu, type ProjectActions } from '@/components/project-actions';
+import { formatBytes, formatRelativeTime, getLanguageColor, prettyPath, cn } from '@/lib/utils';
+import type { ProjectSummary } from '@/types/client';
 
 interface ProjectCardProps {
-  project: {
-    id: string;
-    name: string;
-    path: string;
-    language?: string | null;
-    framework?: string | null;
-    size: number | bigint;
-    lastModified?: Date | string | null;
-    isGitRepo?: boolean;
-    gitBranch?: string | null;
-    gitRemote?: string | null;
-    gitStatus?: string | null;
-    isFavorite?: boolean;
-    isArchived?: boolean;
-    tags?: Array<{ id: string; name: string; color: string }>;
-    backups?: Array<{ id: string; createdAt: Date | string }>;
-  };
-  onToggleFavorite?: (id: string) => void;
-  onArchive?: (id: string) => void;
-  onDelete?: (id: string) => void;
+  project: ProjectSummary;
+  actions: ProjectActions;
+  onRequestDelete: (project: ProjectSummary) => void;
+  /** Quick Look: selecting a card and pressing space peeks at it. */
+  selected?: boolean;
+  onSelect?: (project: ProjectSummary) => void;
+  onPeek?: (project: ProjectSummary) => void;
 }
 
-export function ProjectCard({ project, onToggleFavorite, onArchive, onDelete }: ProjectCardProps) {
+/**
+ * Grid tile. The hierarchy is deliberate: name, then the one number that
+ * says whether the project is safe, then the facts you scan for. Everything
+ * else waits behind the menu.
+ */
+export function ProjectCard({
+  project,
+  actions,
+  onRequestDelete,
+  selected,
+  onSelect,
+  onPeek,
+}: ProjectCardProps) {
   const languageColor = getLanguageColor(project.language);
-  const frameworkColor = getFrameworkColor(project.framework);
-  const hasBackup = project.backups && project.backups.length > 0;
 
   return (
-    <Card className="group relative overflow-hidden transition-[background-color,border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-20px_rgba(0,0,0,0.9)] hover:bg-white/[0.075] bg-white/[0.06] border-white/[0.13] hover:border-white/[0.19]">
-      <div className="flex flex-col p-6 min-h-[200px]">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2.5">
-              {/* Language icon tile */}
-              <div
-                className="w-11 h-11 rounded-[12px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
-                style={{ backgroundColor: `${languageColor}14` }}
-              >
-                <FolderOpen className="w-[22px] h-[22px]" style={{ color: languageColor }} />
-              </div>
-
-              <Link
-                href={`/projects/${project.id}`}
-                className="text-[18px] font-semibold tracking-tight hover:text-white/80 transition-colors truncate"
-              >
-                {project.name}
-              </Link>
-              {project.isFavorite && (
-                <Star className="w-[18px] h-[18px] text-[#ffd60a] fill-[#ffd60a] shrink-0" />
-              )}
-              {project.isArchived && (
-                <Archive className="w-[18px] h-[18px] text-white/40 shrink-0" />
-              )}
-            </div>
-
-            <p className="text-[12px] text-[#86868b] truncate font-mono mb-3.5">
-              {project.path}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2 mb-3.5">
-              {project.language && (
-                <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium"
-                  style={{ backgroundColor: `${languageColor}14`, color: languageColor }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: languageColor }} />
-                  {project.language}
-                </span>
-              )}
-              {project.framework && (
-                <span
-                  className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium"
-                  style={{
-                    backgroundColor: frameworkColor ? `${frameworkColor}10` : 'rgba(255,255,255,0.06)',
-                    color: frameworkColor ? frameworkColor : 'rgba(255,255,255,0.6)',
-                  }}
-                >
-                  {project.framework}
-                </span>
-              )}
-              {hasBackup && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium bg-[#30d158]/10 text-[#30d158]">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Backed up
-                </span>
-              )}
-            </div>
+    <Card
+      interactive
+      onClick={() => onSelect?.(project)}
+      onKeyDown={(event) => {
+        if (event.key === ' ' && onPeek) {
+          event.preventDefault();
+          onPeek(project);
+        }
+      }}
+      tabIndex={0}
+      className={cn(
+        'group relative flex flex-col p-5 outline-none',
+        selected && 'border-accent ring-[3px] ring-accent-tint'
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-[3px] h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: languageColor }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <Link
+              href={`/projects/${project.id}`}
+              onClick={(event) => event.stopPropagation()}
+              className="truncate text-[16px] font-semibold tracking-[-0.018em] text-ink hover:text-accent-ink"
+            >
+              {project.name}
+            </Link>
+            {project.isFavorite && (
+              <Star className="h-[13px] w-[13px] shrink-0 fill-warn text-warn" aria-label="Favourite" />
+            )}
           </div>
+          <p className="mono mt-0.5 truncate text-[12.5px] text-ink-4" title={project.path}>
+            {prettyPath(project.path)}
+          </p>
         </div>
 
-        <div className="mt-auto">
-          <div className="flex items-center gap-5 text-[12px] text-white/40 pt-4 border-t border-white/[0.09]">
-            <span className="tabular-nums">{formatBytes(project.size)}</span>
-            {project.isGitRepo && project.gitBranch && (
-              <span className="flex items-center gap-1.5">
-                <GitBranch className="w-3.5 h-3.5" />
-                {project.gitBranch}
-              </span>
-            )}
-            {project.gitRemote && (
-              <a
-                href={project.gitRemote}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 hover:text-white/60 transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Remote
-              </a>
-            )}
-            <span className="ml-auto">Modified {formatRelativeTime(project.lastModified)}</span>
+        <div className="flex shrink-0 items-center gap-1">
+          <ScoreChip score={project.health.score} grade={project.health.grade} />
+          <div className="opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+            <ProjectMenu project={project} actions={actions} onRequestDelete={onRequestDelete} />
           </div>
-
-          {project.tags && project.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3.5">
-              {project.tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-2.5 py-1 text-[11px] rounded-full"
-                  style={{
-                    backgroundColor: `${tag.color}18`,
-                    color: tag.color,
-                  }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-              {project.tags.length > 3 && (
-                <span className="text-[12px] text-white/35">
-                  +{project.tags.length - 3}
-                </span>
-              )}
-            </div>
-          )}
         </div>
+      </div>
 
-        {/* Actions */}
-        <div className="absolute top-5 right-5 flex items-center gap-1.5 shrink-0">
-          {!hasBackup && (
-            <span title="Needs backup" aria-label="Needs backup" className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-[#ff9f0a]/10 text-[#ff9f0a]/80">
-              <FolderSync className="w-3.5 h-3.5" />
+      {/* The next action for this project, in words. */}
+      <p className="mt-3.5 line-clamp-2 text-[14px] leading-relaxed text-ink-3">{project.health.headline}</p>
+
+      <div className="mt-auto pt-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {project.language && <DotBadge size="sm" color={languageColor}>{project.language}</DotBadge>}
+          {project.framework && (
+            <span className="inline-flex h-[19px] items-center rounded-full bg-surface-3 px-2 text-[12px] font-medium text-ink-2">
+              {project.framework}
             </span>
           )}
+          {project.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag.id}
+              className="inline-flex h-[19px] items-center rounded-full px-2 text-[12px] font-medium"
+              style={{
+                color: tag.color,
+                backgroundColor: `color-mix(in srgb, ${tag.color} 13%, transparent)`,
+              }}
+            >
+              {tag.name}
+            </span>
+          ))}
+          {project.tags.length > 2 && (
+            <span className="text-[12px] text-ink-4">+{project.tags.length - 2}</span>
+          )}
+        </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={`More actions for ${project.name}`} className="h-9 w-9 opacity-100 sm:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-white/50 hover:text-white">
-                <MoreHorizontal className="w-[18px] h-[18px]" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onToggleFavorite?.(project.id)}>
-                {project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onArchive?.(project.id)}>
-                {project.isArchived ? 'Unarchive' : 'Archive'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete?.(project.id)}
-                className="text-[#ff453a] focus:text-[#ff453a]"
-              >
-                Remove from library
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="mt-3.5 flex items-center gap-3 border-t-[0.5px] border-line pt-3 text-[12.5px] text-ink-4">
+          <span className="tabular">{formatBytes(project.size)}</span>
+          {project.isGitRepo && project.gitBranch && (
+            <span className="flex min-w-0 items-center gap-1">
+              <GitBranch className="h-3 w-3 shrink-0" />
+              <span className="truncate">{project.gitBranch}</span>
+              {project.gitStatus === 'dirty' && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warn" title="Uncommitted changes" />
+              )}
+            </span>
+          )}
+          <span className="ml-auto shrink-0 tabular">{formatRelativeTime(project.lastModified)}</span>
         </div>
       </div>
     </Card>

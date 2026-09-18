@@ -1,77 +1,69 @@
 'use client';
 
 import * as React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      'codeshelf-card rounded-[18px] border border-white/[0.13] bg-white/[0.06] backdrop-blur-xl',
-      className
-    )}
-    {...props}
-  />
-));
+const cardVariants = cva('rounded-[var(--radius-xl)] border-[0.5px] border-line', {
+  variants: {
+    tone: {
+      /** Default: opaque white/near-black panel on the canvas. */
+      surface: 'bg-surface',
+      /** Recedes — for nested blocks inside a surface card. */
+      sunken: 'bg-surface-3 border-transparent',
+      /** No fill at all; just the hairline. */
+      outline: 'bg-transparent',
+    },
+    elevation: {
+      none: '',
+      flat: 'shadow-[var(--shadow-hairline)]',
+      card: 'shadow-[var(--shadow-card)]',
+      lift: 'shadow-[var(--shadow-lift)]',
+    },
+    interactive: {
+      true: 'transition-[background-color,border-color,box-shadow,transform] duration-250 ease-[var(--ease-standard)] hover:border-line-2 hover:shadow-[var(--shadow-lift)]',
+      false: '',
+    },
+  },
+  defaultVariants: {
+    tone: 'surface',
+    elevation: 'card',
+    interactive: false,
+  },
+});
+
+export interface CardProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, tone, elevation, interactive, ...props }, ref) => (
+    <div ref={ref} className={cn(cardVariants({ tone, elevation, interactive }), className)} {...props} />
+  )
+);
 Card.displayName = 'Card';
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex flex-col space-y-1.5 p-6', className)}
-    {...props}
-  />
-));
-CardHeader.displayName = 'CardHeader';
+/** Section heading row inside a card: title on the left, actions on the right. */
+function CardHead({
+  title,
+  subtitle,
+  action,
+  className,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex items-start justify-between gap-4', className)}>
+      <div className="min-w-0">
+        <h2 className="text-[18px] font-semibold tracking-[-0.018em] text-ink">{title}</h2>
+        {subtitle && <p className="mt-1 text-[14px] text-ink-3">{subtitle}</p>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn('text-lg font-semibold leading-none tracking-tight', className)}
-    {...props}
-  />
-));
-CardTitle.displayName = 'CardTitle';
-
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn('text-sm text-white/60', className)}
-    {...props}
-  />
-));
-CardDescription.displayName = 'CardDescription';
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
-));
-CardContent.displayName = 'CardContent';
-
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex items-center p-6 pt-0', className)}
-    {...props}
-  />
-));
-CardFooter.displayName = 'CardFooter';
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+export { Card, CardHead, cardVariants };

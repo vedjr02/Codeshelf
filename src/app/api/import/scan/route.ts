@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectProject } from '@/lib/project-detector';
 import { getSessionUser } from '@/lib/session';
+import { desktopOnlyResponse, isDesktopHost } from '@/lib/desktop';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -22,6 +23,8 @@ interface ScanResult {
 // POST /api/import/scan - Scan a folder for projects
 export async function POST(request: NextRequest) {
   try {
+    if (!isDesktopHost()) return desktopOnlyResponse('Scanning folders reads your disk.');
+
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

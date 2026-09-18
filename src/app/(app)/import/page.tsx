@@ -1,24 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { AlertCircle, Check, FolderSearch, GitBranch, Loader2 } from 'lucide-react';
+import { PageShell } from '@/components/page-shell';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { IconInput } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { LoadingState, EmptyState } from '@/components/ui/states';
-import { formatBytes, getLanguageColor } from '@/lib/utils';
-import {
-  FolderSearch,
-  CheckCircle,
-  ArrowLeft,
-  FolderGit2,
-  GitBranch,
-  AlertCircle,
-  Scan,
-  Sparkles,
-} from 'lucide-react';
-import Link from 'next/link';
+import { EmptyState } from '@/components/ui/states';
+import { useToast } from '@/components/ui/toast';
+import { notifyLibraryChanged } from '@/components/library-context';
+import { formatBytes, getLanguageColor, plural, prettyPath, cn } from '@/lib/utils';
 
 interface ScannedProject {
   path: string;
@@ -31,285 +24,297 @@ interface ScannedProject {
   size: number;
 }
 
+const SUGGESTIONS = ['~/Developer', '~/Documents', '~/Projects', '~/code', '~/src'];
+
 export default function ImportPage() {
   const router = useRouter();
-  const [folderPath, setFolderPath] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-  const [scannedProjects, setScannedProjects] = useState<ScannedProject[]>([]);
-  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const { success, error: toastError } = useToast();
 
-  const handleScan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!folderPath.trim()) return;
+  const [folder, setFolder] = React.useState('');
+  const [scanning, setScanning] = React.useState(false);
+  const [scanned, setScanned] = React.useState<ScannedProject[] | null>(null);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [importing, setImporting] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const scan = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!folder.trim()) return;
+
+    setScanning(true);
+    setError(null);
+    setScanned(null);
+    setSelected(new Set());
 
     try {
-      setIsScanning(true);
-      setError(null);
-      setScannedProjects([]);
-      setSelectedPaths(new Set());
-
       const res = await fetch('/api/import/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderPath }),
+        body: JSON.stringify({ folderPath: folder.trim() }),
       });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'That folder could not be scanned.');
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to scan directory');
-      }
-
-      setScannedProjects(data.projects);
-      setSelectedPaths(new Set(data.projects.map((p: ScannedProject) => p.path)));
+      const found = (payload.projects ?? []) as ScannedProject[];
+      setScanned(found);
+      setSelected(new Set(found.map((project) => project.path)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Scan failed');
+      setError(err instanceof Error ? err.message : 'That folder could not be scanned.');
     } finally {
-      setIsScanning(false);
+      setScanning(false);
     }
   };
 
-  const handleToggleSelect = (path: string) => {
-    const next = new Set(selectedPaths);
-    if (next.has(path)) {
-      next.delete(path);
-    } else {
-      next.add(path);
-    }
-    setSelectedPaths(next);
+  const toggle = (path: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
   };
 
-  const handleSelectAll = () => {
-    if (selectedPaths.size === scannedProjects.length) {
-      setSelectedPaths(new Set());
-    } else {
-      setSelectedPaths(new Set(scannedProjects.map((p) => p.path)));
-    }
-  };
-
-  const handleImport = async () => {
-    if (selectedPaths.size === 0) return;
-
-    setIsImporting(true);
+  const importSelected = async () => {
+    if (selected.size === 0) return;
+    setImporting(true);
     setError(null);
-    setImportProgress(0);
-    const pathsToImport = Array.from(selectedPaths);
+    setProgress(0);
+
+    const paths = Array.from(selected);
     const failed: string[] = [];
 
-    for (let i = 0; i < pathsToImport.length; i++) {
-      const path = pathsToImport[i];
+    for (let index = 0; index < paths.length; index += 1) {
       try {
         const res = await fetch('/api/projects', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectPath: path }),
+          body: JSON.stringify({ projectPath: paths[index] }),
         });
-        if (!res.ok) failed.push(path.split('/').pop() || path);
+        if (!res.ok) failed.push(paths[index].split('/').pop() || paths[index]);
       } catch {
-        failed.push(path.split('/').pop() || path);
+        failed.push(paths[index].split('/').pop() || paths[index]);
       }
-      setImportProgress(Math.round(((i + 1) / pathsToImport.length) * 100));
+      setProgress(Math.round(((index + 1) / paths.length) * 100));
     }
 
+    notifyLibraryChanged();
+
     if (failed.length === 0) {
+      success(`Imported ${plural(paths.length, 'project')}`, 'Shelf Scores are ready on the overview.');
       router.push('/projects');
       return;
     }
 
-    setError(
-      failed.length === 1
-        ? `Failed to import "${failed[0]}". It may already be in your library.`
-        : `Failed to import ${failed.length} projects: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`
+    setImporting(false);
+    const imported = paths.length - failed.length;
+    if (imported > 0) success(`Imported ${plural(imported, 'project')}`);
+    toastError(
+      failed.length === 1 ? `Could not import “${failed[0]}”` : `Could not import ${failed.length} projects`,
+      'They may already be in your library.'
     );
-    setIsImporting(false);
   };
 
-  return (
-    <div className="min-h-screen">
-      <div className="p-5 sm:p-10 max-w-7xl mx-auto">
-          {/* Back */}
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-2 text-[14px] text-[#9a9aa3] hover:text-white mb-7 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Projects
-          </Link>
+  const allSelected = scanned !== null && selected.size === scanned.length && scanned.length > 0;
 
-          {/* Header */}
-          <div className="mb-10 animate-rise">
-            <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
-              <Scan className="w-4 h-4" />
-              Import
-            </span>
-            <h1 className="text-[40px] font-semibold tracking-tight leading-none mb-2">
-              Import Projects
-            </h1>
-            <p className="text-[16px] text-[#9a9aa3] mt-1">
-              Scan a folder to discover and import your coding projects
-            </p>
+  return (
+    <PageShell
+      title="Import projects"
+      back={{ href: '/projects', label: 'Projects' }}
+      subtitle="Give CodeShelf a folder. It looks inside for package manifests and git repositories, works out the language, framework and size of each project, and lists what it found."
+      actions={
+        scanned && scanned.length > 0 ? (
+          <Button
+            variant="primary"
+            size="pill"
+            onClick={() => void importSelected()}
+            disabled={selected.size === 0 || importing}
+          >
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {importing ? 'Importing…' : `Import ${selected.size}`}
+          </Button>
+        ) : undefined
+      }
+    >
+      {/* ---- Scan ------------------------------------------------------- */}
+      <Card className="p-5">
+        <form onSubmit={scan} className="flex flex-col gap-3 sm:flex-row">
+          <div className="min-w-0 flex-1">
+            <IconInput
+              icon={<FolderSearch />}
+              value={folder}
+              onChange={(event) => setFolder(event.target.value)}
+              placeholder="/Users/you/Developer"
+              className="mono"
+              disabled={scanning || importing}
+              aria-label="Folder to scan"
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            disabled={scanning || importing || !folder.trim()}
+            className="shrink-0"
+          >
+            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {scanning ? 'Scanning…' : 'Scan folder'}
+          </Button>
+        </form>
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[13.5px] text-ink-4">Common places:</span>
+          {SUGGESTIONS.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              disabled={scanning || importing}
+              onClick={() => setFolder(suggestion.replace('~', ''))}
+              className="mono rounded-full bg-surface-3 px-2 py-0.5 text-[12.5px] text-ink-3 transition-colors hover:text-ink disabled:opacity-50"
+              title={`Fill in ${suggestion} — replace with your full home path`}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-[var(--radius-md)] bg-bad-tint px-3.5 py-3 text-[14px] text-bad">
+            <AlertCircle className="mt-px h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+      </Card>
+
+      {importing && (
+        <Card className="mt-4 p-5">
+          <div className="mb-2.5 flex items-center justify-between text-[14.5px]">
+            <span className="text-ink-2">Importing {plural(selected.size, 'project')}…</span>
+            <span className="tabular text-ink-3">{progress}%</span>
+          </div>
+          <Progress value={progress} />
+        </Card>
+      )}
+
+      {/* ---- Results ---------------------------------------------------- */}
+      {scanning ? (
+        <Card className="mt-5 p-10">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader2 className="h-5 w-5 animate-spin text-ink-4" />
+            <p className="text-[14.5px] text-ink-3">Walking the folder and reading manifests…</p>
+          </div>
+        </Card>
+      ) : scanned === null ? null : scanned.length === 0 ? (
+        <Card className="mt-5">
+          <EmptyState
+            icon={<FolderSearch />}
+            title="No projects in that folder"
+            description="CodeShelf looks for package.json, requirements.txt, Cargo.toml, go.mod, Gemfile, pom.xml and git repositories. Try the folder one level up."
+          />
+        </Card>
+      ) : (
+        <div className="mt-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[18px] font-semibold tracking-[-0.018em] text-ink">
+                Found {plural(scanned.length, 'project')}
+              </h2>
+              <p className="text-[14px] text-ink-3">
+                {selected.size} selected · {formatBytes(
+                  scanned.filter((p) => selected.has(p.path)).reduce((sum, p) => sum + p.size, 0)
+                )}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={importing}
+              onClick={() =>
+                setSelected(allSelected ? new Set() : new Set(scanned.map((project) => project.path)))
+              }
+            >
+              {allSelected ? 'Deselect all' : 'Select all'}
+            </Button>
           </div>
 
-          {/* Scan Form */}
-          <Card className="mb-8 p-7 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '0.05s' }}>
-            <form onSubmit={handleScan} className="flex gap-3">
-              <div className="relative flex-1">
-                <FolderSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/35" />
-                <Input
-                  type="text"
-                  placeholder="/Users/username/Developer or C:\Users\username\Projects"
-                  value={folderPath}
-                  onChange={(e) => setFolderPath(e.target.value)}
-                  className="pl-10 font-mono"
-                  disabled={isScanning || isImporting}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={isScanning || isImporting || !folderPath.trim()}
-                className="shrink-0 gap-2 rounded-full px-6 disabled:opacity-50"
-              >
-                <Scan className="w-4 h-4" />
-                {isScanning ? 'Scanning...' : 'Scan Folder'}
-              </Button>
-            </form>
+          <Card className="overflow-hidden" elevation="flat">
+            {scanned.map((project) => {
+              const isSelected = selected.has(project.path);
+              const color = getLanguageColor(project.language);
+              return (
+                <label
+                  key={project.path}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-3 border-b-[0.5px] border-line px-4 py-3 last:border-b-0',
+                    'transition-colors duration-100',
+                    isSelected ? 'bg-accent-tint' : 'hover:bg-surface-3',
+                    importing && 'pointer-events-none opacity-60'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-colors',
+                      isSelected ? 'border-accent bg-accent text-on-accent' : 'border-line-3'
+                    )}
+                  >
+                    {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isSelected}
+                      onChange={() => toggle(project.path)}
+                      disabled={importing}
+                    />
+                  </span>
 
-            {error && (
-              <div className="mt-4 flex items-center gap-2.5 text-[13px] text-red-400 bg-red-500/[0.08] border border-red-500/20 p-3.5 rounded-xl">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {error}
-              </div>
-            )}
+                  <span
+                    aria-hidden="true"
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-[15px] font-medium text-ink">{project.name}</span>
+                      {project.language && (
+                        <span className="shrink-0 text-[12.5px] text-ink-4">{project.language}</span>
+                      )}
+                      {project.framework && (
+                        <span className="hidden shrink-0 rounded-full bg-surface-3 px-1.5 py-px text-[12px] text-ink-3 sm:inline">
+                          {project.framework}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mono block truncate text-[12.5px] text-ink-4">{prettyPath(project.path)}</span>
+                  </span>
+
+                  <span className="hidden shrink-0 items-center gap-1 text-[13px] text-ink-4 sm:flex">
+                    {project.isGitRepo && (
+                      <>
+                        <GitBranch className="h-3 w-3" />
+                        git
+                      </>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-[13.5px] tabular text-ink-3">{formatBytes(project.size)}</span>
+                </label>
+              );
+            })}
           </Card>
 
-          {/* Import Progress */}
-          {isImporting && (
-            <Card className="mb-8 p-5 border-[#2997ff]/25 bg-[#2997ff]/[0.06] animate-fade">
-              <div className="flex items-center justify-between text-[14px] mb-3">
-                <span className="text-[#2997ff]">Importing projects...</span>
-                <span className="text-[#2997ff] tabular-nums">{importProgress}%</span>
-              </div>
-              <Progress value={importProgress} className="h-2" />
-            </Card>
-          )}
-
-          {/* Scanned Results */}
-          {isScanning ? (
-            <LoadingState message="Scanning directories for projects..." />
-          ) : scannedProjects.length > 0 ? (
-            <div className="space-y-4 animate-rise" style={{ animationDelay: '0.1s' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-[17px] font-semibold tracking-tight">
-                    Found {scannedProjects.length} Projects
-                  </h2>
-                  <p className="text-[13px] text-white/40">
-                    {selectedPaths.size} selected for import
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="sm" onClick={handleSelectAll} disabled={isImporting} className="rounded-xl text-[13px]">
-                    {selectedPaths.size === scannedProjects.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                  <Button
-                    onClick={handleImport}
-                    disabled={selectedPaths.size === 0 || isImporting}
-                    size="sm"
-                    className="rounded-full gap-1.5 bg-[#30d158] hover:bg-[#40e368] text-white disabled:opacity-50"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Import ({selectedPaths.size})
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2 stagger">
-                {scannedProjects.map((project) => {
-                  const isSelected = selectedPaths.has(project.path);
-                  const langColor = getLanguageColor(project.language);
-
-                  return (
-                    <div
-                      key={project.path}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      tabIndex={isImporting ? -1 : 0}
-                      onKeyDown={(e) => {
-                        if ((e.key === ' ' || e.key === 'Enter') && !isImporting) {
-                          e.preventDefault();
-                          handleToggleSelect(project.path);
-                        }
-                      }}
-                      onClick={() => !isImporting && handleToggleSelect(project.path)}
-                      className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-[background-color,border-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-[#2997ff]/55 focus-visible:outline-none ${
-                        isSelected
-                          ? 'border-[#2997ff]/35 bg-[#2997ff]/[0.07]'
-                          : 'border-white/[0.13] bg-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.16]'
-                      }`}
-                    >
-                      {/* Checkbox */}
-                      <div className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
-                        isSelected
-                          ? 'bg-[#0a84ff] border-[#0a84ff] text-white'
-                          : 'border-white/25'
-                      }`}>
-                        {isSelected && <CheckCircle className="w-3.5 h-3.5" />}
-                      </div>
-
-                      {/* Language tile */}
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${langColor}14` }}
-                      >
-                        <span className="w-2.5 h-2.5 rounded-full lang-dot" style={{ color: langColor, backgroundColor: langColor }} />
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[14px] font-semibold tracking-tight truncate">{project.name}</span>
-                          {project.language && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium" style={{ backgroundColor: `${langColor}12`, color: langColor }}>
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: langColor }} />
-                              {project.language}
-                            </span>
-                          )}
-                          {project.framework && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-white/50">
-                              {project.framework}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11.5px] text-white/35 font-mono truncate">{project.path}</p>
-                      </div>
-
-                      {/* Meta */}
-                      <div className="flex items-center gap-3 text-[11.5px] text-white/40 shrink-0">
-                        <span className="tabular-nums">{formatBytes(project.size)}</span>
-                        {project.isGitRepo && (
-                          <span className="flex items-center gap-1">
-                            <GitBranch className="w-3 h-3" />
-                            Git
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : folderPath && !isScanning ? (
-            <EmptyState
-              icon={<FolderGit2 className="w-8 h-8 text-white/30" />}
-              title="No projects found"
-              description="No coding projects were detected in the selected folder. Make sure the path contains projects with package files or Git repositories."
-              className="py-16"
-            />
-          ) : null}
+          <div className="mt-5 flex justify-end">
+            <Button
+              variant="primary"
+              size="pill-lg"
+              onClick={() => void importSelected()}
+              disabled={selected.size === 0 || importing}
+            >
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {importing ? 'Importing…' : `Import ${plural(selected.size, 'project')}`}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+    </PageShell>
   );
 }

@@ -2,10 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { createSession, setSessionCookie } from '@/lib/session';
+import { clientKey, rateLimit } from '@/lib/rate-limit';
+
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 1000 * 60 * 60; // 1 hour
+
+/**
+ * Registration closes after the first account.
+ *
+ * An account here can scan, open and delete folders on the host machine, so an
+ * open sign-up form is a remote foothold for anyone who can reach the port.
+ * The first run needs a way in; after that, set CODESHELF_ALLOW_REGISTRATION=true
+ * to add another person deliberately.
+ */
+async function registrationOpen(): Promise<boolean> {
+  if (process.env.CODESHELF_ALLOW_REGISTRATION === 'true') return true;
+  const existing = await prisma.user.count();
+  return existing === 0;
+}
+
+// GET /api/auth/register - Whether the sign-up form should be offered
+export async function GET() {
+  try {
+    return NextResponse.json({ open: await registrationOpen() });
+  } catch {
+    return NextResponse.json({ open: false });
+  }
+}
 
 // POST /api/auth/register - Create an account and start a session
 export async function POST(request: NextRequest) {
   try {
+    const limit = rateLimit(`register:${clientKey(request)}`, MAX_ATTEMPTS, WINDOW_MS);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Try again later.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+      );
+    }
+
+    if (!(await registrationOpen())) {
+      return NextResponse.json(
+        {
+          error:
+            'This shelf already has an account. Set CODESHELF_ALLOW_REGISTRATION=true on the server to add another.',
+        },
+        { status: 403 }
+      );
+    }
+
     const { name, email, password } = await request.json();
 
     if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -13,6 +58,9 @@ export async function POST(request: NextRequest) {
     }
     if (!password || typeof password !== 'string' || password.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+    }
+    if (password.length > 200) {
+      return NextResponse.json({ error: 'Password is too long' }, { status: 400 });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });

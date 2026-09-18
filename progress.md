@@ -33,129 +33,150 @@ npm run lint
 - `.env` is local-only and **not** in git. It contains:
   - `DATABASE_URL="postgresql://ved@localhost:5432/codeshelf"` (Homebrew trust auth, no password)
   - `BACKUP_STORAGE_PATH="/tmp/codeshelf-backups"`
-- Postgres runs as local user `ved`. The `codeshelf` DB has all 11 tables (added `Setting` this session).
-- **Danger:** `npm ci` / force checks-out will wipe `.env` and `node_modules` (both gitignored). If that ever happens: recreate `.env` (above) and run `npm ci`.
+- Optional: `CODESHELF_EDITOR` names the editor launcher used by "Open in editor". Without it, CodeShelf tries `cursor`, `code`, `zed`, `subl`, `webstorm`, `idea` in that order.
+- Postgres runs as local user `ved`. The `codeshelf` DB has 12 tables (`SmartCollection` was added this session).
+- **Danger:** `npm ci` / force checkouts will wipe `.env` and `node_modules` (both gitignored). If that happens: recreate `.env` (above) and run `npm ci`.
 
 ---
 
 ## Project overview
 
-CodeShelf is a **local project library & backup manager** for developers:
-- Scans folders to discover coding projects (detects language, framework, package manager, git info)
-- Imports them into a PostgreSQL library with tags, collections, favorites
-- Takes local zip backups of project code (archiver v8 class API) and **restores** them anywhere
-- Dashboard with stats, backup health, recently-opened / needs-backup lists
-- **Now multi-user with real auth** (session cookies, bcrypt credentials login)
+CodeShelf is a **local project library and backup manager** for developers:
 
-**Stack:** Next.js 16.3.5 (App Router), React 19, Tailwind v4 (CSS-based config via `@import "tailwindcss"`), Prisma + PostgreSQL, Radix UI primitives, lucide-react icons, archiver v8.
+- Scans folders to discover coding projects (language, framework, package manager, git state)
+- Imports them into a PostgreSQL library with tags, collections and Smart Collections
+- Scores every project with a **Shelf Score** so you can see what you could lose
+- Takes local zip snapshots and restores them anywhere
+- Finds reclaimable disk space (dependency trees, build output, caches) and removes only what you select
+- Hands projects to the desktop: reveal in Finder, open in editor, open in terminal
+- Multi-user with real auth (session cookies, bcrypt credentials)
 
-**Critical file** — `AGENTS.md` — warns this Next.js version has breaking differences from training data. Read `node_modules/next/dist/docs/` before writing Next-specific code. Two verified differences: **middleware is now `proxy.ts`** (named export `proxy`), and **ESLint ships strict react-hooks rules** (`set-state-in-effect` forbids setState synchronously in effects — see quirks below).
+**Stack:** Next.js 16.3.5 (App Router, Turbopack), React 19, Tailwind v4 (CSS-first `@theme`), Prisma + PostgreSQL, Radix UI primitives, lucide-react, archiver v8.
 
----
-
-## Design language (Apple.com-inspired)
-
-- **Typography:** SF Pro system stack, large sparse headlines, tight tracking, strong hierarchy
-- **Surface:** light neutral canvas `#f5f5f7`, translucent white materials, hairline black borders, restrained shadows
-- **Accent:** Apple blue `#0071e3` (primary), `#30d158` green (backup/success), `#ff453a` red (danger)
-- **Layout:** calm editorial spacing, fixed translucent utility sidebar, responsive content, `max-w-7xl` pages
-- Reduced motion is supported through `prefers-reduced-motion`
-- The visual system was moved from dark glassmorphism to a light Mac-utility aesthetic in the latest redesign pass
+**Critical file** — `AGENTS.md` — warns this Next.js version differs from training data. Read `node_modules/next/dist/docs/` before writing Next-specific code. Two verified differences: **middleware is `proxy.ts`** (named export `proxy`), and **ESLint ships strict react-hooks rules** (see quirks).
 
 ---
 
-## Current state (LAST UPDATED: 2026-09-17 — UI/UX hardening, visual redesign, cloud groundwork)
+## Design system (read this before touching any UI)
 
-### ✅ Done (this session — all verified end-to-end via curl + live UI)
+The whole visual system lives in **`src/app/globals.css`** and nowhere else.
 
-**Auth (real, replaces the old hardcoded `dev-user-id`):**
-- `src/lib/session.ts` — DB-backed sessions (30-day TTL, httpOnly cookie `codeshelf_session`)
-- APIs: `POST /api/auth/register|login|logout`, `GET /api/auth/me`
-- Login page at `/login` (split-panel Apple style, Sign In / Create Account toggle)
-- `src/proxy.ts` — Next 16 proxy guards all pages; APIs return 401 without a session
-- **Every API route is scoped to the session user** (`DEFAULT_USER_ID` is gone)
-- Old next-auth/bcryptjs scaffolding in `src/lib/auth.ts` is now unused; deps kept
+- **Tokens only.** Colour, radius, shadow and easing are CSS custom properties declared in `@theme`. Components use semantic utilities — `bg-surface`, `bg-surface-2`, `bg-surface-3`, `text-ink`/`ink-2`/`ink-3`/`ink-4`/`ink-5`, `border-line`/`line-2`/`line-3`, `bg-accent`, `text-accent-ink`, `text-good`/`warn`/`bad`/`violet` and their `-tint` backgrounds. **Never hardcode a hex value in a component.**
+- **Two themes, one set of names.** `.dark` redefines the same tokens. There are no `!important` overrides and no per-theme class names. The previous design was a dark theme repainted light through attribute selectors; that whole layer is gone.
+- **Appearance** is Light / Dark / Auto, stored in `localStorage` under `codeshelf:appearance` and applied before first paint by an inline script (`themeBootstrapScript` in `src/components/theme-provider.tsx`) so the page never flashes the wrong theme.
+- **Contrast is verified, not assumed.** Every token that carries text clears WCAG AA (4.5:1) against every surface it can sit on, in both themes — including text on its own `-tint` chip background. `ink-5` is the single exception at 3:1 and is only for non-text marks (dots, chevrons, disabled glyphs). `--color-accent` is the *fill* (white text on it clears AA) and `--color-accent-ink` is accent-coloured *text*; `--color-on-status` is the text colour on a filled status colour, which is white in light mode and near-black in dark mode the way iOS does it.
+- **Animations are theme values, not hand-written classes.** `--animate-fade`, `--animate-rise`, `--animate-scale-in`, `--animate-slide-from-left`, `--animate-breathe` live in `@theme`. This matters: Radix drives entrances through `data-[state=open]:` variants, and Tailwind can only build a variant around a utility it knows about. A hand-written `.animate-fade` class silently produces no `data-[state=open]:animate-fade` rule.
+- **Type:** SF Pro system stack. Large titles at 32/40px with `-0.025em` tracking; body 15px; captions 11–13px. `.mono` for paths and code, `.tabular` for numbers.
+- **Materials:** `.material` is translucent chrome (sidebar, toolbars, menus). Cards are opaque with a 0.5px hairline and a very soft shadow.
+- **Motion:** `--ease-standard` is Apple's `cubic-bezier(0.32, 0.72, 0, 1)`. Reduced motion is honoured globally.
 
-**Shell & navigation:**
-- `src/components/app-shell.tsx` — ONE AppShell in `src/app/(app)/layout.tsx` route group; pages no longer render their own `<Sidebar/>`
-- `/login` lives outside the group so it renders chrome-free
-- Responsive: desktop fixed sidebar; mobile drawer + sticky topbar with menu/search
-- `src/components/command-palette.tsx` — ⌘K/Ctrl+K palette: debounced project search (`/api/search`), quick nav actions, full keyboard support; opened from sidebar button and mobile search button
+### Shared UI
 
-**New capabilities:**
-- **Backups page `/backups`** — global snapshot list, stats strip, search, restore dialog, delete
-- **Restore:** `PUT /api/backup` extracts a completed zip into `<destination>/<project>-restored-<ts>`; destination must exist (400 otherwise). Verified files land on disk.
-- **Settings persistence:** new `Setting` model + `GET/PUT /api/settings` with validation; settings page loads and saves for real (auto-backup toggle, provider, backup path)
-- **Collections/tags filters work:** `/projects?collectionId=…&tagId=…` actually filters; active filter shown as removable chips
-- **Onboarding:** first-run dashboard shows a 3-step getting-started flow when library is empty
+`src/components/page-shell.tsx` gives every screen the same frame: a large title that collapses into a translucent sticky toolbar on scroll, carrying the page's actions with it. The toolbar copy of the actions is **conditionally rendered**, not hidden with opacity, so page actions never appear twice in the tab order.
 
-**UX/system:**
-- `src/components/ui/toast.tsx` — global toasts (success/error/info) used on mutations
-- `src/components/ui/confirm-dialog.tsx` — replaces `window.confirm` (delete project/backup)
-- Projects search debounced 250ms; error states with retry on dashboard/projects/backups
-- Import rows support keyboard selection with checkbox semantics and focus states
-- Sidebar navigation exposes `aria-current`; icon actions have accessible labels
-- Added reusable skeleton loading states and loading status announcements
-- Added global focus-visible styling and reduced-motion support
-- Removed duplicate initial fetch patterns from dashboard, collections, backups, and project detail
-- Added password visibility toggle to auth
-- Added responsive mobile layouts for project detail, dashboard, backups, collections, and import
-- Added safer Turbopack handling for user-selected filesystem paths
-- **Apple-inspired redesign:** light canvas, white layered cards, translucent sidebar, darker typography, restrained blue accent
-- ESLint: **0 errors, 0 warnings**; `next build` + `tsc --noEmit` clean
+---
 
-**Cloud groundwork:**
-- Added `CloudConnection` Prisma model for per-user provider metadata and OAuth token persistence
-- This is schema groundwork only; Google Drive OAuth/API/provider upload/restore is not implemented yet
-- Run `npx prisma db push` before using the new model in application code
+## Current state (LAST UPDATED: 2026-09-18 — full UI/UX rebuild and feature pass)
 
-**Pushed micro-commits:**
-- `9e8ba30` — harden project and backup interactions
-- `6c60531` — introduce the Apple-inspired visual system
-- `d274356` — prepare cloud connection persistence
-- All commits are authored only by `Vedjr02 <ambreved3@gmail.com>`
+### ✅ Done this session
 
-**Smoke-tested flows (before the visual/cloud groundwork commits):** register → login → me → logout; settings GET/PUT; scan folder → import → list; dashboard; backup create → list → restore (files verified) → delete; palette search; collection filter; unauthed redirect/401.
+**Design system rebuilt from the ground up**
+- `globals.css` rewritten as a token system; every `!important` theme-translation hack deleted
+- Real dark mode with a Light/Dark/Auto control (sidebar footer and Settings)
+- All UI primitives rewritten against tokens: `button` (primary/secondary/ghost/link/destructive/success), `card`, `input` (+ `Textarea`, `IconInput`, `Field`), `badge` (+ `DotBadge`), `dialog`, `dropdown-menu`, `select`, `tabs` (underline tabs + Apple `Segmented` control), `switch`, `progress` (+ `Ring`), `toast`, `tooltip`, `states` (+ `SkeletonRows`), `confirm-dialog`
+- Verified: every class used in `src/` resolves to a rule in the compiled stylesheet, and every text token clears WCAG AA in both themes
+
+**New: Shelf Score** (`src/lib/health.ts`)
+- One 0–100 number per project for *"can I lose this, and can I come back to it"*, from five factors: Recoverable (40), Versioned (25), Documented (15), Organized (10), Tidy (10)
+- Every factor reports its own score, ceiling, plain-language state and the single next action, so the number always justifies itself
+- Computed on the server in `src/lib/project-query.ts` so the list, the detail page, the palette and the dashboard can never disagree
+- Surfaced as a chip in lists, a ring on the dashboard and project page, and a full breakdown in Quick Look
+
+**New: Smart Collections** (`SmartCollection` model, `src/lib/smart-rules.ts`)
+- Saved rules, not saved lists: membership is recomputed on every read
+- 12 rule fields (backup state, git, working tree, language, framework, tag, collection, size, last modified, Shelf Score, favourite, archived) with all/any matching
+- Rule editor matches live against your real library while you build it, so you cannot save a rule that matches nothing
+- Four presets, and the sidebar lists every rule with its live count
+
+**New: Spotlight-grade command palette**
+- Fuzzy subsequence ranking with scoped queries: `lang:`, `fw:`, `tag:`, `in:`, `is:dirty|unprotected|risky|favourite|archived`
+- Groups projects, Smart Collections, collections, tags and navigation; remembers recents
+- Acts without leaving the palette: `⏎` open, `⌘⏎` reveal in Finder, `⌥⏎` open in editor, `⇧⏎` back up now
+
+**New: Quick Look** — select a project and press space for a peek panel with the score breakdown and one-click actions, escape or space to dismiss. Same gesture as the Finder's.
+
+**New: desktop integration** (`src/lib/os-actions.ts`, `POST /api/projects/[id]/open`)
+- Reveal in Finder, open in editor (tries six launchers, honours `CODESHELF_EDITOR`), open in terminal, copy path
+- The path always comes from the database row scoped to the session user and is passed as an argv entry, never interpolated into a shell
+
+**New: Manage Storage** (`/api/projects/[id]/storage`)
+- Scans up to three levels for 18 kinds of regenerable directory and reports each one's size, file count and why it is safe to remove
+- Deletes only what you tick. Every candidate path is resolved and proven to stay inside the project, and its final segment must be a known-regenerable name, so `../../etc`, `/etc` and `src` are all rejected
+- On a real project this found 728 MB of reclaimable space
+
+**New: Backup timeline** — a project's snapshots as a timeline with the size delta between consecutive snapshots, plus a density strip across the whole span. The backups page groups every snapshot by project.
+
+**New: refresh from disk** (`POST /api/projects/[id]/refresh`) — detection previously ran only at import, so git state and size drifted from reality immediately.
+
+**Fixed: tags and collections were decorative** — they could be created but never attached to anything. `src/components/project-filing.tsx` is the missing half, on every project page.
+
+**Pages rebuilt**
+- **Overview** — leads with the library Shelf Score, the grade distribution and *Needs attention* with a one-click fix per row; then a facts strip, 12-week backup activity, composition, duplicate checkouts and "pick up where you left off"
+- **Projects** — grid/list views (list is a sortable table), keyboard navigation, Quick Look, context headers for Smart Collections / collections / tags
+- **Project detail** — score ring plus breakdown, filing, and Overview / Timeline / Storage / Files / Dependencies / README / Notes
+- **Backups**, **Collections & Tags** (with the rule editor), **Import**, **Settings**, **Login** — all rebuilt on the new system
+
+**API**
+- `/api/dashboard` now answers "what needs me today" instead of returning counters
+- `/api/projects` serves Shelf Scores, smart-collection filtering and score sorting
+- `/api/search` rewritten as the single palette query with scoped terms and fuzzy ranking
+
+### Verified end to end (against the live app, 2026-09-18)
+
+23/23 checks passed: every page 200, unauthenticated pages redirect and APIs 401, register → login → me, folder scan (11 projects found), import, Shelf Score recomputation (47 → 87 after a snapshot, → 97 after filing), backup create → list → delete, restore dialog wiring, storage scan and delete with all three traversal attempts rejected, OS actions including every error path, Smart Collection create/list/filter/patch with invalid rules and duplicate names rejected, settings round-trip, scoped search (`lang:`, `is:`, `in:`, fuzzy). `next build`, `tsc --noEmit` and `eslint src` are all clean.
+
+Test data created during verification was removed afterwards; the database is back to its previous contents.
 
 ### 🟡 Known gaps / next up (in priority order)
 
-1. **Google Drive OAuth integration** — implement connect/callback/disconnect routes, encrypted token refresh, a CodeShelf Backups folder, cloud upload/download/delete, and provider-aware restore.
-2. **Cloud connection UI** — add a real connected-account card and provider selector to Settings; local backup must remain a fallback.
-3. **Cloud backup data migration** — after Drive support is verified, add provider-aware backup records and idempotent retry behavior without breaking existing local archives.
-4. **Auto-backup scheduler** — the setting persists but nothing enforces weekly backups yet (cron/launchd or an interval in a server singleton).
-5. **Replace legacy next-auth scaffold** — delete `src/lib/auth.ts` + unused deps (`next-auth`, `@auth/prisma-adapter`; bcryptjs is still used).
-6. **Data migration for old dev-user rows** — if the DB ever contains `dev-user-id` rows again, they are invisible post-auth.
-7. **Scan rescan / project refresh** — `detectProject` runs at import only; add a detail-page refresh action for git state/size.
-8. **Feature differentiation** — backup timeline, project health score, smart duplicate cleanup, activity history, and native folder picker.
-9. **Automated tests** — add unit/API/end-to-end coverage for auth, import, backup, restore, deletion, and cloud connection flows.
+1. **Visual review in a browser** — this session verified the compiled CSS, contrast maths and every API, but the Chrome extension was not connected, so nothing was eyeballed. Open the app in both themes and at phone width before trusting the layout.
+2. **Auto-backup scheduler** — the setting persists and Settings says so plainly ("Not active"), but nothing enforces it yet (cron/launchd or an interval in a server singleton).
+3. **Google Drive OAuth** — `CloudConnection` is schema groundwork only: connect/callback/disconnect routes, encrypted token refresh, a CodeShelf Backups folder, upload/download/delete and provider-aware restore.
+4. **Cloud connection UI** in Settings; local must stay the fallback.
+5. **Remove the legacy next-auth scaffold** — `src/lib/auth.ts` plus `next-auth` and `@auth/prisma-adapter` are unused (bcryptjs is still used).
+6. **Automated tests** — no test suite exists. Auth, import, backup, restore, storage reclaim (especially the path guards) and smart rules all deserve coverage.
+7. **Native folder picker** for import, instead of typing a path.
+8. **Library-wide storage view** — Manage Storage is per project; a whole-library version would be the obvious next feature.
 
 ### Known quirks / traps for the next agent
 
 - `node_modules` and `.env` are gitignored — do NOT `npm ci` unless needed.
-- Git history contains small micro-commits. New commits must be authored only as the repository owner; do not add any contributor or co-author trailers.
-- **ESLint react-hooks/set-state-in-effect:** calling a setState synchronously inside an effect (even via an async helper that awaits first, or `.then`) errors. Working pattern:
+- **Tailwind v4 variants only wrap real utilities.** If you write a plain CSS class and then use it inside a variant (`data-[state=open]:my-class`), nothing is generated and the style silently does not exist. Declare it in `@theme` instead. This bit the dialog, menu, tooltip and tab animations; a class-vs-compiled-CSS audit is the fastest way to catch it.
+- **ESLint `react-hooks/set-state-in-effect`:** calling setState synchronously in an effect errors, including via an async helper. The working pattern is an async IIFE with a cancellation flag:
   ```ts
   useEffect(() => {
-    let cancelled = false;
-    (async () => { ...; if (!cancelled) setState(x); })();
-    return () => { cancelled = true; };
-  }, []);
+    const signal = { cancelled: false };
+    (async () => { await load(signal); })();
+    return () => { signal.cancelled = true; };
+  }, [load]);
   ```
-  For immediate synchronous updates (e.g. `setSearching(true)` before a debounce), wrap in `requestAnimationFrame`.
-- **tsc may show stale `.next/dev/types` errors after moving/renaming page files** — `rm -rf .next` (or run the dev server) to regenerate; not a source error.
-- Background dev servers get reaped when a terminal session ends; `nohup`/`&` don't survive either. Use `screen -dmS codeshelf bash -c '… exec node node_modules/.bin/next dev …'` to keep one alive, or run server+tests in a single command.
-- Restore/delete-archive operations require `unzip` on PATH (macOS has it).
-- `getLanguageColor` / `getFrameworkColor` in `src/lib/utils.ts` drive all language/dot colors.
-- API routes live in `src/app/api/...` (auth/*, projects, projects/[id], dashboard, backup incl. PUT restore, settings, collections, tags, search, import/scan).
+  For an immediate synchronous update, wrap it in `requestAnimationFrame`.
+- **ESLint `react-hooks/static-components`:** a component defined inside another component's body is an error. Hoist it to module scope and pass what it needs as props.
+- **`useSearchParams` needs a Suspense boundary at build time.** The sidebar reads it to highlight the active collection, so `AppShell` wraps it in `<React.Suspense fallback={<SidebarFallback />}>`. Without that, `next build` fails prerendering every page.
+- **`tsc` may report stale `.next/dev/types` errors** after moving or renaming page files — `rm -rf .next` (or run the dev server) to regenerate; not a source error.
+- Background dev servers get reaped when a terminal session ends. Use `screen -dmS codeshelf bash -c '… exec node node_modules/.bin/next dev …'` to keep one alive.
+- Restore and archive deletion require `unzip` on PATH (macOS has it).
+- `getLanguageColor` / `getFrameworkColor` in `src/lib/utils.ts` drive all language dots. Those are GitHub's colours and some are low-contrast, so they are used only as dots and tints, never as text.
+- API routes live in `src/app/api/...`: `auth/*`, `projects`, `projects/[id]`, `projects/[id]/open`, `projects/[id]/refresh`, `projects/[id]/storage`, `dashboard`, `backup` (incl. `PUT` restore), `settings`, `collections`, `tags`, `smart-collections`, `smart-collections/[id]`, `search`, `import/scan`.
 
 ---
 
 ## How sessions continue here
 
 A new session should:
-1. Read this file + `README.md`.
-2. Start the dev server and open the app to eyeball current state (register a fresh account if DB was reset).
-3. Continue from **"Known gaps"** order — highest priority first.
+1. Read this file and `README.md`.
+2. Start the dev server and open the app to eyeball the current state.
+3. Continue from **"Known gaps"** — highest priority first.
 4. After every batch: `tsc --noEmit`, `eslint src`, `next build`, then commit small slices.
 5. **Update this file**, then commit the progress update too.
 
@@ -165,4 +186,5 @@ A new session should:
 
 - Small, single-purpose micro-commits.
 - Messages: `feat:`, `fix:`, `refactor:`, `style:`, `chore:`, `docs:` prefix.
-- Backdate with `GIT_AUTHOR_DATE` + `GIT_COMMITTER_DATE` to keep each day (Sep 2–16) at ≥12 commits.
+- New commits must be authored only as the repository owner. Do not add any
+  contributor or co-author trailers.

@@ -1,637 +1,587 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { EmptyState, LoadingState } from '@/components/ui/states';
-import { getLanguageColor, getFrameworkColor, formatRelativeTime } from '@/lib/utils';
+import * as React from 'react';
+import Link from 'next/link';
 import {
-  FolderGit2,
-  HardDrive,
-  Star,
-  ShieldCheck,
-  AlertTriangle,
-  Plus,
   ArrowRight,
   ArrowUpRight,
-  Layers,
-  Boxes,
-  Flame,
   Clock,
-  Sparkles,
-  FolderOpen,
+  Copy,
   FolderSearch,
-  FolderKanban,
-  ChevronRight,
+  HardDrive,
+  Layers,
+  Plus,
+  ShieldPlus,
+  Sparkles,
 } from 'lucide-react';
-import Link from 'next/link';
+import { PageShell, Section } from '@/components/page-shell';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui/states';
+import { ScoreChip, ScoreRing } from '@/components/score';
+import { useToast } from '@/components/ui/toast';
+import { notifyLibraryChanged } from '@/components/library-context';
+import { formatBytes, formatRelativeTime, getLanguageColor, plural, prettyPath, cn } from '@/lib/utils';
+import { gradeLabel, type HealthGrade } from '@/lib/health';
+import type { LibraryReclaim } from '@/types/client';
 
-interface DashboardStats {
+interface DashboardData {
   totalProjects: number;
+  archivedCount: number;
   totalSize: number;
-  languages: Array<{ language: string; count: number }>;
-  frameworks: Array<{ framework: string; count: number }>;
-  recentlyOpened: Array<{
+  libraryScore: number;
+  libraryGrade: HealthGrade;
+  gradeCounts: Record<HealthGrade, number>;
+  protectedCount: number;
+  attention: Array<{
     id: string;
     name: string;
-    language?: string;
-    lastOpened?: string;
+    language?: string | null;
+    score: number;
+    grade: HealthGrade;
+    headline: string;
+    lastBackupAt?: string | null;
+  }>;
+  recent: Array<{
+    id: string;
+    name: string;
     path: string;
+    language?: string | null;
+    lastOpened?: string | null;
+    score: number;
   }>;
   recentlyModified: Array<{
     id: string;
     name: string;
-    language?: string;
-    lastModified?: string;
     path: string;
+    language?: string | null;
+    lastModified?: string | null;
+    gitStatus?: string | null;
+    score: number;
   }>;
-  projectsNeedingBackup: Array<{
-    id: string;
-    name: string;
-    lastModified?: string;
-    lastBackup?: string | null;
-  }>;
+  languages: Array<{ name: string; count: number }>;
+  frameworks: Array<{ name: string; count: number }>;
+  backupSummary: {
+    total: number;
+    failed: number;
+    totalSize: number;
+    lastBackupAt: string | null;
+    weeks: Array<{ weekStart: string; count: number }>;
+  };
   duplicateGroups: Array<{
-    type: string;
     gitRemote: string;
     count: number;
-    projects: Array<{
-      id: string;
-      name: string;
-      path: string;
-    }>;
+    wastedSize: number;
+    projects: Array<{ id: string; name: string; path: string; size: number }>;
   }>;
 }
 
-// Animated counter that eases into the final value
-function useCountUp(target: number, duration = 700) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    let raf: number;
-    const start = performance.now();
-    const from = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(from + (target - from) * eased));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-  return value;
+const GRADE_ORDER: HealthGrade[] = ['excellent', 'good', 'fair', 'at-risk'];
+const GRADE_TOKEN: Record<HealthGrade, string> = {
+  excellent: 'var(--color-good)',
+  good: 'var(--color-accent)',
+  fair: 'var(--color-warn)',
+  'at-risk': 'var(--color-bad)',
+};
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return 'Still up';
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
-function StatCard({
-  label,
-  value,
-  unit,
-  icon: Icon,
-  accent,
-  delay,
-}: {
-  label: string;
-  value: number;
-  unit?: string;
-  icon: React.ElementType;
-  accent: string;
-  delay?: number;
-}) {
-  const count = useCountUp(value);
-  return (
-    <Card
-      className="relative overflow-hidden p-6 bg-white/[0.06] border-white/[0.13] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300 animate-rise"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex items-center justify-between mb-5">
-        <div
-          className="w-11 h-11 rounded-[12px] flex items-center justify-center"
-          style={{ backgroundColor: `${accent}14`, color: accent }}
-        >
-          <Icon className="w-[22px] h-[22px]" />
-        </div>
-        <span className="w-2 h-2 rounded-full bg-white/[0.12]" />
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-[40px] font-semibold tracking-tight leading-none tabular-nums">
-          {count}
-        </span>
-        {unit && <span className="text-[15px] text-[#9a9aa3] font-medium">{unit}</span>}
-      </div>
-      <div className="text-[13px] text-[#9a9aa3] mt-2 font-medium">{label}</div>
-    </Card>
-  );
-}
+export default function OverviewPage() {
+  const [data, setData] = React.useState<DashboardData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  // Reclaimable space, read from the cache only. A full disk walk belongs to
+  // the Storage page, not to opening the Overview.
+  const [reclaim, setReclaim] = React.useState<LibraryReclaim | null>(null);
+  const { success, error: toastError } = useToast();
 
-function BackupRing({ percent }: { percent: number }) {
-  const radius = 34;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percent / 100) * circumference;
-  return (
-    <div className="relative w-[92px] h-[92px]">
-      <svg className="w-[92px] h-[92px] -rotate-90" viewBox="0 0 80 80">
-        <circle
-          cx="40" cy="40" r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.08)"
-          strokeWidth="7"
-        />
-        <circle
-          cx="40" cy="40" r={radius}
-          fill="none"
-          stroke="#30d158"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-1000 ease-out"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[22px] font-semibold tabular-nums tracking-tight">{percent}%</span>
-      </div>
-    </div>
-  );
-}
-
-function LanguageBar({ name, count, max }: { name: string; count: number; max: number }) {
-  const color = getLanguageColor(name);
-  const pct = max > 0 ? (count / max) * 100 : 0;
-  return (
-    <div className="group/lb">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span
-            className="w-2.5 h-2.5 rounded-full lang-dot shrink-0"
-            style={{ color, backgroundColor: color }}
-          />
-          <span className="text-[14px] text-white/80 group-hover/lb:text-white transition-colors truncate">{name}</span>
-        </div>
-        <span className="text-[13px] text-white/35 group-hover/lb:text-white/60 transition-colors tabular-nums">{count}</span>
-      </div>
-      <div className="h-[6px] rounded-full bg-white/[0.07] overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${pct}%`, backgroundColor: color, opacity: 0.85 }}
-        />
-      </div>
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = useCallback(async () => {
+  const load = React.useCallback(async () => {
     try {
       const res = await fetch('/api/dashboard');
-      if (!res.ok) throw new Error('Failed to fetch stats');
-      const data = await res.json();
-      setStats(data);
+      if (!res.ok) throw new Error('Could not load your library');
+      setData(await res.json());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      setError(err instanceof Error ? err.message : 'Could not load your library');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    const id = window.setTimeout(() => { void fetchStats(); }, 0);
-    return () => window.clearTimeout(id);
-  }, [fetchStats]);
+  React.useEffect(() => {
+    const signal = { cancelled: false };
+    (async () => {
+      await load();
+      if (signal.cancelled) return;
+      try {
+        const res = await fetch('/api/storage?cached=1');
+        if (!res.ok) return;
+        const payload = (await res.json()) as LibraryReclaim;
+        if (!signal.cancelled && !payload.pending) setReclaim(payload);
+      } catch {
+        // The tile is an extra; if it cannot load, the page is still complete.
+      }
+    })();
+    return () => {
+      signal.cancelled = true;
+    };
+  }, [load]);
+
+  const backUp = async (projectId: string, name: string) => {
+    setBusyId(projectId);
+    try {
+      const res = await fetch('/api/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Backup failed');
+      success('Snapshot created', name);
+      notifyLibraryChanged();
+      await load();
+    } catch (err) {
+      toastError('Backup failed', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingState message="Loading dashboard..." />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <EmptyState
-          icon={<AlertTriangle className="h-8 w-8 text-[#ff453a]" />}
-          title="Failed to load dashboard"
-          description={error}
-          action={
-            <Button onClick={fetchStats} variant="secondary">
-              Try again
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
-
-  if (!stats) return null;
-
-  // First-run onboarding: the library is empty — show a real getting-started flow
-  if (stats.totalProjects === 0) {
-    return (
-      <div className="min-h-screen">
-        <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 animate-rise">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45">
-                  <Sparkles className="w-4 h-4" />
-                  {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                </span>
-              </div>
-              <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
-                Welcome to CodeShelf
-              </h1>
-              <p className="text-[16px] text-[#9a9aa3]">Your shelf is empty — let&apos;s fill it.</p>
-            </div>
+      <PageShell title="Overview" subtitle="Reading your library…">
+        <div className="space-y-6">
+          <Skeleton className="h-[220px] w-full rounded-[var(--radius-xl)]" />
+          <div className="grid gap-5 lg:grid-cols-3">
+            <Skeleton className="h-[260px] rounded-[var(--radius-xl)] lg:col-span-2" />
+            <Skeleton className="h-[260px] rounded-[var(--radius-xl)]" />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 stagger">
-            {[
-              {
-                step: '1',
-                icon: FolderSearch,
-                color: '#2997ff',
-                title: 'Scan a folder',
-                body: 'Point CodeShelf at your projects directory. It finds repos and detects languages, frameworks and git state automatically.',
-                href: '/import',
-                cta: 'Scan now',
-              },
-              {
-                step: '2',
-                icon: FolderKanban,
-                color: '#ff9f0a',
-                title: 'Organize',
-                body: 'Group related projects into collections and tag them so everything is findable later.',
-                href: '/collections',
-                cta: 'Create collections',
-              },
-              {
-                step: '3',
-                icon: ShieldCheck,
-                color: '#30d158',
-                title: 'Protect your work',
-                body: 'Take zip snapshots of any project in one click — stored locally, restorable anytime.',
-                href: '/backups',
-                cta: 'See backups',
-              },
-            ].map((step) => (
-              <Card
-                key={step.step}
-                className="group relative overflow-hidden p-7 bg-white/[0.06] border-white/[0.13] hover:bg-white/[0.06] hover:border-white/[0.16] transition-all duration-300"
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <div
-                    className="w-12 h-12 rounded-[14px] flex items-center justify-center"
-                    style={{ backgroundColor: `${step.color}14`, color: step.color }}
-                  >
-                    <step.icon className="w-[22px] h-[22px]" />
-                  </div>
-                  <span
-                    className="text-[44px] font-bold tracking-tighter leading-none select-none"
-                    style={{ color: `${step.color}2e` }}
-                  >
-                    {step.step}
-                  </span>
-                </div>
-                <h3 className="text-[18px] font-semibold tracking-tight mb-2">{step.title}</h3>
-                <p className="text-[13.5px] text-[#9a9aa3] leading-relaxed mb-6">{step.body}</p>
-                <Link href={step.href}>
-                  <Button variant="secondary" size="sm" className="rounded-full gap-1.5 group-hover:bg-white/[0.12] transition-colors">
-                    {step.cta}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              </Card>
-            ))}
-          </div>
-
-          <p className="text-center text-[13px] text-white/30 mt-10 animate-fade">
-            Tip: press <kbd className="text-[11px] border border-white/12 rounded-md px-1.5 py-0.5 mx-0.5">⌘K</kbd> anywhere to search or jump around.
-          </p>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
-  const backupPercent = stats.totalProjects > 0
-    ? Math.round(((stats.totalProjects - stats.projectsNeedingBackup.length) / stats.totalProjects) * 100)
-    : 100;
+  if (error || !data) {
+    return (
+      <PageShell title="Overview">
+        <Card className="p-4">
+          <ErrorState message={error ?? 'Something went wrong'} retry={load} />
+        </Card>
+      </PageShell>
+    );
+  }
 
-  const langMax = Math.max(1, ...stats.languages.map((l) => l.count));
-  const hour = new Date().getHours();
-  const greeting = hour < 6 ? 'Working late' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  /* ---- First run: an empty shelf gets instructions, not a dashboard ---- */
+  if (data.totalProjects === 0) {
+    return (
+      <PageShell
+        title="Welcome to CodeShelf"
+        subtitle="Point it at a folder and it will find every project inside, work out what each one is, and tell you which ones you could lose."
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              step: '1',
+              icon: FolderSearch,
+              title: 'Scan a folder',
+              body: 'Languages, frameworks, git state and size are detected for you.',
+              href: '/import',
+              cta: 'Scan a folder',
+            },
+            {
+              step: '2',
+              icon: Layers,
+              title: 'Let rules file it',
+              body: 'Smart Collections group projects by what they are, and stay correct as things change.',
+              href: '/collections?new=smart',
+              cta: 'Make a rule',
+            },
+            {
+              step: '3',
+              icon: ShieldPlus,
+              title: 'Protect the work',
+              body: 'One click takes a local snapshot you can restore anywhere.',
+              href: '/backups',
+              cta: 'About backups',
+            },
+          ].map((step) => (
+            <Card key={step.step} className="flex flex-col p-5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-3 text-[14px] font-semibold tabular text-ink-3">
+                {step.step}
+              </span>
+              {/* h2: the only heading above these on the first-run page is the
+                  page title, so h3 would skip a level for a screen reader. */}
+              <h2 className="mt-4 text-[16px] font-semibold tracking-[-0.018em]">{step.title}</h2>
+              <p className="mt-1.5 flex-1 text-[14.5px] leading-relaxed text-ink-3">{step.body}</p>
+              <Button asChild variant="link" size="sm" className="mt-4 self-start px-0">
+                <Link href={step.href}>
+                  {step.cta}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </Card>
+          ))}
+        </div>
+
+        <p className="mt-8 text-center text-[14px] text-ink-4">
+          Press{' '}
+          <kbd className="rounded-[5px] border-[0.5px] border-line bg-surface-3 px-1.5 py-0.5 text-[12.5px]">⌘K</kbd>{' '}
+          anywhere to search or jump.
+        </p>
+      </PageShell>
+    );
+  }
+
+  const weekMax = Math.max(1, ...data.backupSummary.weeks.map((w) => w.count));
+
+  // Prefer what you actually opened; fall back to what changed on disk.
+  const continueList =
+    data.recent.length > 0
+      ? data.recent.slice(0, 5).map((p) => ({ id: p.id, name: p.name, when: p.lastOpened ?? null }))
+      : data.recentlyModified.slice(0, 5).map((p) => ({ id: p.id, name: p.name, when: p.lastModified ?? null }));
+  const langTotal = data.languages.reduce((sum, l) => sum + l.count, 0);
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 animate-rise">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45">
-                  <Sparkles className="w-4 h-4" />
-                  {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                </span>
-              </div>
-              <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
-                {greeting}, Developer
-              </h1>
-              <p className="text-[16px] text-[#9a9aa3]">
-                Your project library at a glance
+    <PageShell
+      title={greeting()}
+      subtitle={`${plural(data.totalProjects, 'project')} on the shelf · ${formatBytes(data.totalSize)} of source`}
+      actions={
+        <Button asChild variant="primary" size="pill">
+          <Link href="/import">
+            <Plus className="h-4 w-4" />
+            Import
+          </Link>
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* ---- Shelf Score: the headline the whole page hangs off ------- */}
+        <Card className="overflow-hidden">
+          <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:gap-8 sm:p-7">
+            <ScoreRing
+              score={data.libraryScore}
+              grade={data.libraryGrade}
+              size={112}
+              thickness={9}
+              caption="Shelf Score"
+            />
+
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[22px] font-semibold tracking-[-0.022em] text-ink">
+                Your library is {gradeLabel(data.libraryGrade).toLowerCase()}
+              </h2>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-ink-3">
+                {data.protectedCount} of {data.totalProjects} projects have a snapshot.{' '}
+                {data.gradeCounts['at-risk'] > 0
+                  ? `${plural(data.gradeCounts['at-risk'], 'project')} could be lost today.`
+                  : 'Nothing is in immediate danger.'}
               </p>
-            </div>
 
-            <div className="flex items-center gap-4">
-              <Link href="/projects?sortBy=lastOpened" className="hidden md:flex items-center gap-2 text-[14px] text-[#9a9aa3] hover:text-white transition-colors">
-                <Clock className="w-4 h-4" />
-                Recently viewed
-              </Link>
-              <Link href="/import">
-                <Button size="lg" className="gap-2 rounded-full px-6">
-                  <Plus className="w-[18px] h-[18px]" />
-                  Import
-                </Button>
-              </Link>
+              {/* Distribution: one bar, four states, no chart junk. */}
+              <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-surface-3">
+                {GRADE_ORDER.map((grade) => {
+                  const count = data.gradeCounts[grade];
+                  if (count === 0) return null;
+                  return (
+                    <div
+                      key={grade}
+                      className="h-full transition-[width] duration-700 ease-[var(--ease-standard)]"
+                      style={{
+                        width: `${(count / data.totalProjects) * 100}%`,
+                        backgroundColor: GRADE_TOKEN[grade],
+                      }}
+                      title={`${count} ${gradeLabel(grade).toLowerCase()}`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+                {GRADE_ORDER.map((grade) => (
+                  <span key={grade} className="inline-flex items-center gap-1.5 text-[13px] text-ink-3">
+                    <span
+                      aria-hidden="true"
+                      className="h-[7px] w-[7px] rounded-full"
+                      style={{ backgroundColor: GRADE_TOKEN[grade] }}
+                    />
+                    {gradeLabel(grade)}
+                    <span className="tabular text-ink-4">{data.gradeCounts[grade]}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8 stagger">
-            <StatCard
-              label="Projects in library"
-              value={stats.totalProjects}
-              icon={FolderGit2}
-              accent="#2997ff"
-              delay={0}
-            />
-            <StatCard
-              label="Total storage used"
-              value={Math.round(stats.totalSize / (1024 * 1024))}
-              unit="MB"
-              icon={HardDrive}
-              accent="#30d158"
-              delay={60}
-            />
-            <StatCard
-              label="Languages detected"
-              value={stats.languages.length}
-              icon={Layers}
-              accent="#ff9f0a"
-              delay={120}
-            />
-            <StatCard
-              label="Frameworks detected"
-              value={stats.frameworks.length}
-              icon={Boxes}
-              accent="#64d2ff"
-              delay={180}
+          {/* Facts strip — hairline separated, no boxes. */}
+          <div className="grid grid-cols-2 gap-px border-t-[0.5px] border-line bg-line sm:grid-cols-4">
+            <Fact label="Projects" value={String(data.totalProjects)} hint={data.archivedCount > 0 ? `${data.archivedCount} archived` : undefined} />
+            <Fact label="Source size" value={formatBytes(data.totalSize)} />
+            <Fact label="Snapshots" value={String(data.backupSummary.total)} hint={formatBytes(data.backupSummary.totalSize)} />
+            <Fact
+              label="Last backup"
+              value={formatRelativeTime(data.backupSummary.lastBackupAt)}
+              hint={data.backupSummary.failed > 0 ? `${data.backupSummary.failed} failed` : undefined}
+              hintTone={data.backupSummary.failed > 0 ? 'bad' : undefined}
             />
           </div>
+        </Card>
 
-          {/* Main content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left — 2 cols */}
-            <div className="col-span-3 lg:col-span-2 space-y-8">
-              {/* Language + Framework distribution */}
-              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '220ms' }}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-[20px] font-semibold tracking-tight">Tech Distribution</h2>
-                  <span className="text-[12px] text-white/35 font-mono">{stats.languages.length} langs · {stats.frameworks.length} frameworks</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
-                  <div className="space-y-5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-1">Languages</div>
-                    {stats.languages.length === 0 ? (
-                      <p className="text-[14px] text-[#9a9aa3]">No languages detected yet</p>
-                    ) : (
-                      stats.languages.slice(0, 6).map((l) => (
-                        <LanguageBar key={l.language} name={l.language} count={l.count} max={langMax} />
-                      ))
-                    )}
-                  </div>
-                  <div className="space-y-5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-1">Frameworks</div>
-                    {stats.frameworks.length === 0 ? (
-                      <p className="text-[14px] text-[#9a9aa3]">No frameworks detected yet</p>
-                    ) : (
-                      stats.frameworks.slice(0, 6).map((f) => {
-                        const c = getFrameworkColor(f.framework) || '#2997ff';
-                        const pct = (f.count / Math.max(1, ...stats.frameworks.map((x) => x.count))) * 100;
-                        return (
-                          <div key={f.framework} className="group/lb">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[14px] text-white/80 group-hover/lb:text-white transition-colors">{f.framework}</span>
-                              <span className="text-[13px] text-white/35 tabular-nums">{f.count}</span>
-                            </div>
-                            <div className="h-[6px] rounded-full bg-white/[0.07] overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, backgroundColor: c, opacity: 0.85 }} />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </Card>
-
-              {/* Recently Opened */}
-              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '280ms' }}>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
-                    <Flame className="w-5 h-5 text-[#ff9f0a]" />
-                    Recently Opened
-                  </h2>
-                  <Link href="/projects?sortBy=lastOpened" className="text-[13px] text-[#2997ff] hover:text-white flex items-center gap-1 transition-colors">
-                    View all <ArrowRight className="w-3.5 h-3.5" />
+        {/* Three real columns once there is room for them, so a wide window
+            shows the whole page at once instead of one long strip. */}
+        <div className="grid gap-5 lg:grid-cols-3 2xl:grid-cols-12">
+          {/* ---- Needs attention: the working part of the page --------- */}
+          <div className="lg:col-span-2 2xl:col-span-5">
+            <Section
+              title="Needs attention"
+              description="Ordered by Shelf Score — the weakest first."
+              action={
+                <Button asChild variant="link" size="sm" className="px-0">
+                  <Link href="/projects?sortBy=health&sortOrder=asc">
+                    See all
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
-                </div>
-                {stats.recentlyOpened.length === 0 ? (
+                </Button>
+              }
+            >
+              <Card className="overflow-hidden" elevation="flat">
+                {data.attention.length === 0 ? (
                   <EmptyState
-                    title="No projects opened yet"
-                    description="Import your first project to see it here"
-                    action={
-                      <Link href="/import">
-                        <Button size="sm" variant="secondary">
-                          <Plus className="w-4 h-4 mr-1" />
-                          Import Project
-                        </Button>
-                      </Link>
-                    }
-                    className="py-8"
+                    icon={<Sparkles className="text-good" />}
+                    title="Everything is in good shape"
+                    description="Every project is backed up, tracked and documented. Nothing needs you right now."
                   />
                 ) : (
-                  <div className="space-y-1">
-                    {stats.recentlyOpened.slice(0, 5).map((project) => {
-                      const lc = project.language ? getLanguageColor(project.language) : '#9a9aa3';
-                      return (
+                  data.attention.map((project) => (
+                    <div
+                      key={project.id}
+                      className="flex items-center gap-3 border-b-[0.5px] border-line px-4 py-3 last:border-b-0"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: getLanguageColor(project.language) }}
+                      />
+                      <div className="min-w-0 flex-1">
                         <Link
-                          key={project.id}
                           href={`/projects/${project.id}`}
-                          className="group flex items-center gap-4 p-3 rounded-[14px] hover:bg-white/[0.05] transition-colors"
+                          className="block truncate text-[15px] font-medium text-ink hover:text-accent-ink"
                         >
-                          <div
-                            className="w-11 h-11 rounded-[12px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
-                            style={{ backgroundColor: `${lc}14`, color: lc }}
-                          >
-                            <FolderOpen className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[15px] font-medium truncate group-hover:text-white transition-colors">{project.name}</span>
-                              {project.language && (
-                                <span className="hidden sm:inline-flex w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: lc }} />
-                              )}
-                            </div>
-                            <p className="text-[12px] text-[#9a9aa3] truncate font-mono">{project.path}</p>
-                          </div>
-                          <span className="text-[12px] text-white/30 shrink-0 tabular-nums">
-                            {project.lastOpened ? formatRelativeTime(project.lastOpened) : '—'}
-                          </span>
-                          <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-white/60 opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0" />
+                          {project.name}
                         </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </Card>
-
-              {/* Duplicates */}
-              {stats.duplicateGroups.length > 0 && (
-                <Card className="p-8 bg-white/[0.06] border-[#ff9f0a]/20 animate-rise" style={{ animationDelay: '340ms' }}>
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-[12px] bg-[#ff9f0a]/10 flex items-center justify-center">
-                      <AlertTriangle className="w-5 h-5 text-[#ff9f0a]" />
-                    </div>
-                    <div>
-                      <h2 className="text-[20px] font-semibold tracking-tight">Duplicate Projects</h2>
-                      <p className="text-[12px] text-white/40">Multiple local copies of the same remote</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {stats.duplicateGroups.slice(0, 3).map((group, idx) => (
-                      <div key={idx} className="p-4 rounded-[14px] bg-[#ff9f0a]/[0.06] border border-[#ff9f0a]/15">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[14px] text-white/80 font-medium">{group.count} copies of the same remote</span>
-                          <Badge variant="warning" className="text-[11px]">{group.gitRemote || 'Unknown'}</Badge>
-                        </div>
-                        <div className="space-y-1">
-                          {group.projects.slice(0, 3).map((p) => (
-                            <Link
-                              key={p.id}
-                              href={`/projects/${p.id}`}
-                              className="text-[13px] text-white/45 hover:text-[#ff9f0a] block truncate font-mono transition-colors"
-                            >
-                              {p.name} — {p.path}
-                            </Link>
-                          ))}
-                        </div>
+                        <p className="truncate text-[13.5px] text-ink-3">{project.headline}</p>
                       </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-            </div>
-
-            {/* Right — 1 col */}
-            <div className="col-span-3 lg:col-span-1 space-y-8">
-              {/* Backup health */}
-              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '250ms' }}>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-[12px] bg-[#30d158]/10 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-[#30d158]" />
-                  </div>
-                  <h2 className="text-[20px] font-semibold tracking-tight">Backup Health</h2>
-                </div>
-                <div className="flex items-center gap-6">
-                  <BackupRing percent={backupPercent} />
-                  <div className="flex-1 space-y-3 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-[#9a9aa3]">Protected</span>
-                      <span className="text-[15px] font-semibold text-[#30d158]">{stats.totalProjects - stats.projectsNeedingBackup.length}</span>
+                      <ScoreChip score={project.score} grade={project.grade} />
+                      {!project.lastBackupAt && (
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          disabled={busyId === project.id}
+                          onClick={() => void backUp(project.id, project.name)}
+                          className="shrink-0"
+                        >
+                          <ShieldPlus className="h-[13px] w-[13px]" />
+                          {busyId === project.id ? 'Working…' : 'Back up'}
+                        </Button>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-[#9a9aa3]">At risk</span>
-                      <span className="text-[15px] font-semibold text-[#ff9f0a]">{stats.projectsNeedingBackup.length}</span>
-                    </div>
-                    <div className="hairline my-1" />
-                    <div className="flex items-center gap-2 text-[12px] text-white/35">
-                      <FolderGit2 className="w-3.5 h-3.5" />
-                      {stats.totalProjects} total projects
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Needs backup */}
-              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '310ms' }}>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full bg-[#ff9f0a] animate-pulse-soft" />
-                    Needs Backup
-                  </h2>
-                  <span className="w-7 h-7 rounded-[10px] bg-white/[0.06] flex items-center justify-center text-[12px] text-white/60 tabular-nums">
-                    {stats.projectsNeedingBackup.length}
-                  </span>
-                </div>
-                {stats.projectsNeedingBackup.length === 0 ? (
-                  <p className="text-[14px] text-[#9a9aa3] py-2">All projects are protected. Nice work. ✨</p>
-                ) : (
-                  <div className="space-y-1">
-                    {stats.projectsNeedingBackup.slice(0, 4).map((project) => (
-                      <Link
-                        key={project.id}
-                        href={`/projects/${project.id}`}
-                        className="flex items-center justify-between p-3 rounded-[12px] hover:bg-white/[0.05] group transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-medium truncate">{project.name}</p>
-                          <p className="text-[12px] text-[#ff9f0a]/70 mt-0.5">
-                            {project.lastBackup ? `Last backup ${formatRelativeTime(project.lastBackup)}` : 'Never backed up'}
-                          </p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-[#ff9f0a]/70 shrink-0 ml-2 transition-all opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0" />
-                      </Link>
-                    ))}
-                  </div>
+                  ))
                 )}
               </Card>
+            </Section>
 
-              {/* Quick actions */}
-              <Card className="p-8 bg-white/[0.06] border-white/[0.13] animate-rise" style={{ animationDelay: '370ms' }}>
-                <h2 className="text-[20px] font-semibold tracking-tight mb-5">Quick Actions</h2>
-                <div className="space-y-2">
-                  <Link href="/import" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">
-                    <div className="w-10 h-10 rounded-[12px] bg-[#0a84ff]/10 flex items-center justify-center">
-                      <Plus className="w-5 h-5 text-[#2997ff]" />
+            {/* ---- Duplicates ---------------------------------------- */}
+            {data.duplicateGroups.length > 0 && (
+              <Section
+                className="mt-6"
+                title="Duplicate checkouts"
+                description="Several folders point at the same remote."
+              >
+                <Card elevation="flat" className="divide-y-[0.5px] divide-line">
+                  {data.duplicateGroups.slice(0, 3).map((group) => (
+                    <div key={group.gitRemote} className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Copy className="h-[15px] w-[15px] shrink-0 text-warn" />
+                        <span className="mono min-w-0 flex-1 truncate text-[13.5px] text-ink-2">
+                          {group.gitRemote}
+                        </span>
+                        <span className="shrink-0 text-[13px] tabular text-ink-4">
+                          {group.count} copies · {formatBytes(group.wastedSize)} extra
+                        </span>
+                      </div>
+                      <div className="mt-2 space-y-1 pl-6">
+                        {group.projects.map((p) => (
+                          <Link
+                            key={p.id}
+                            href={`/projects/${p.id}`}
+                            className="mono block truncate text-[13px] text-ink-4 transition-colors hover:text-accent-ink"
+                          >
+                            {prettyPath(p.path)}
+                          </Link>
+                        ))}
+                      </div>
                     </div>
-                    <span className="text-[15px] font-medium">Import Project</span>
-                    <ChevronRight className="w-4 h-4 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
-                  </Link>
-                  <Link href="/projects?isFavorite=true" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">
-                    <div className="w-10 h-10 rounded-[12px] bg-[#ffd60a]/10 flex items-center justify-center">
-                      <Star className="w-5 h-5 text-[#ffd60a]" />
+                  ))}
+                </Card>
+              </Section>
+            )}
+          </div>
+
+          {/* ---- Middle column ---------------------------------------- */}
+          <div className="space-y-6 2xl:col-span-4">
+            <Section title="Backup activity" description="Snapshots per week, last 12 weeks.">
+              <Card className="p-5" elevation="flat">
+                <div className="flex h-[72px] items-end gap-[3px]">
+                  {data.backupSummary.weeks.map((week) => (
+                    <div
+                      key={week.weekStart}
+                      className="group relative flex-1"
+                      title={`${week.count} in the week of ${new Date(week.weekStart).toLocaleDateString()}`}
+                    >
+                      <div
+                        className={cn(
+                          'w-full rounded-[3px] transition-[height,background-color] duration-500 ease-[var(--ease-standard)]',
+                          week.count > 0 ? 'bg-accent' : 'bg-surface-3'
+                        )}
+                        style={{ height: Math.max(4, (week.count / weekMax) * 72) }}
+                      />
                     </div>
-                    <span className="text-[15px] font-medium">View Favorites</span>
-                    <ChevronRight className="w-4 h-4 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
-                  </Link>
-                  <Link href="/collections" className="group flex items-center gap-3.5 p-3 rounded-[12px] hover:bg-white/[0.05] transition-colors">
-                    <div className="w-10 h-10 rounded-[12px] bg-[#64d2ff]/10 flex items-center justify-center">
-                      <Boxes className="w-5 h-5 text-[#64d2ff]" />
-                    </div>
-                    <span className="text-[15px] font-medium">Manage Collections</span>
-                    <ChevronRight className="w-4 h-4 ml-auto text-white/20 group-hover:text-white/60 transition-colors" />
-                  </Link>
+                  ))}
+                </div>
+                <div className="mt-2.5 flex justify-between text-[12px] text-ink-4">
+                  <span>12 weeks ago</span>
+                  <span>This week</span>
                 </div>
               </Card>
-            </div>
+            </Section>
+
+            {data.languages.length > 0 && (
+              <Section title="Composition">
+                <Card className="p-5" elevation="flat">
+                  <div className="flex h-2 overflow-hidden rounded-full bg-surface-3">
+                    {data.languages.slice(0, 8).map((lang) => (
+                      <div
+                        key={lang.name}
+                        style={{
+                          width: `${(lang.count / Math.max(1, langTotal)) * 100}%`,
+                          backgroundColor: getLanguageColor(lang.name),
+                        }}
+                        title={`${lang.name}: ${lang.count}`}
+                      />
+                    ))}
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                    {data.languages.slice(0, 5).map((lang) => (
+                      <li key={lang.name}>
+                        <Link
+                          href={`/projects?language=${encodeURIComponent(lang.name)}`}
+                          className="flex items-center gap-2.5 text-[14px] text-ink-2 transition-colors hover:text-accent-ink"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: getLanguageColor(lang.name) }}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{lang.name}</span>
+                          <span className="tabular text-ink-4">{lang.count}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {data.frameworks.length > 0 && (
+                    <p className="mt-4 border-t-[0.5px] border-line pt-3 text-[13.5px] text-ink-4">
+                      Top frameworks:{' '}
+                      <span className="text-ink-3">
+                        {data.frameworks.slice(0, 3).map((f) => f.name).join(', ')}
+                      </span>
+                    </p>
+                  )}
+                </Card>
+              </Section>
+            )}
+
+          </div>
+
+          {/* ---- Right column ----------------------------------------- */}
+          <div className="space-y-6 lg:col-span-3 2xl:col-span-3">
+            {/* Disk. The number comes from the Storage page's cached scan, so
+                this tile is an invitation when there is nothing cached yet. */}
+            <Section title="Disk" description="Dependency trees, build output and caches.">
+              <Card className="p-5" elevation="flat">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-accent-tint">
+                    <HardDrive className="h-5 w-5 text-accent-ink" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[24px] font-semibold leading-none tracking-[-0.025em] tabular text-ink">
+                      {reclaim ? formatBytes(reclaim.totalReclaimable) : '—'}
+                    </div>
+                    <div className="mt-1 text-[13.5px] text-ink-3">
+                      {reclaim ? 'reclaimable' : 'not scanned yet'}
+                    </div>
+                  </div>
+                </div>
+                <Button asChild variant="secondary" size="sm" className="mt-4 w-full">
+                  <Link href="/storage">
+                    {reclaim ? 'Review and free it' : 'Scan my library'}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </Card>
+            </Section>
+
+            {(data.recent.length > 0 || data.recentlyModified.length > 0) && (
+              <Section title="Pick up where you left off">
+                <Card elevation="flat" className="overflow-hidden">
+                  {continueList.map((project) => (
+                    <Link
+                      key={project.id}
+                      href={`/projects/${project.id}`}
+                      className="group flex items-center gap-3 border-b-[0.5px] border-line px-4 py-2.5 transition-colors last:border-b-0 hover:bg-surface-3"
+                    >
+                      <Clock className="h-[14px] w-[14px] shrink-0 text-ink-4" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[14.5px] font-medium text-ink">{project.name}</span>
+                        <span className="block truncate text-[12.5px] text-ink-4">
+                          {formatRelativeTime(project.when)}
+                        </span>
+                      </span>
+                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-ink-5 transition-colors group-hover:text-accent-ink" />
+                    </Link>
+                  ))}
+                </Card>
+              </Section>
+            )}
           </div>
         </div>
       </div>
+    </PageShell>
+  );
+}
+
+function Fact({
+  label,
+  value,
+  hint,
+  hintTone,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  hintTone?: 'bad';
+}) {
+  return (
+    <div className="bg-surface px-5 py-4">
+      <div className="text-[12px] font-medium uppercase tracking-[0.07em] text-ink-4">{label}</div>
+      <div className="mt-1 text-[21px] font-semibold tabular tracking-[-0.02em] text-ink">{value}</div>
+      {hint && (
+        <div className={cn('mt-0.5 text-[13px]', hintTone === 'bad' ? 'text-bad' : 'text-ink-4')}>{hint}</div>
+      )}
+    </div>
   );
 }

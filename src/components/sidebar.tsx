@@ -1,303 +1,367 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  LayoutDashboard,
-  FolderGit2,
-  FolderKanban,
-  Settings,
+  Archive,
+  ChevronRight,
+  FolderClosed,
+  Gauge,
+  Hash,
+  HardDrive,
+  Library,
+  LogOut,
   Plus,
   Search,
-  ChevronRight,
-  LogOut,
-  Loader2,
-  Archive,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Settings,
+  Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
-import type { SessionUser } from '@/lib/session';
-
-export type { SessionUser } from '@/lib/session';
+import { useLibrary } from '@/components/library-context';
+import { ScoreChip } from '@/components/score';
+import { openPalette } from '@/components/command-palette';
 
 export interface SidebarProps {
-  user: SessionUser | null;
-  authResolved?: boolean;
   onLogout?: () => void;
-  isLoggingOut?: boolean;
   onNavigate?: () => void;
-  collapsed?: boolean;
-  onToggleCollapsed?: () => void;
 }
 
-const navSections = [
-  {
-    label: 'Library',
-    items: [
-      { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/projects', label: 'Projects', icon: FolderGit2 },
-      { href: '/backups', label: 'Backups', icon: Archive },
-    ],
-  },
-  {
-    label: 'Organize',
-    items: [
-      { href: '/collections', label: 'Collections', icon: FolderKanban },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { href: '/settings', label: 'Settings', icon: Settings },
-    ],
-  },
+const PRIMARY = [
+  { href: '/', label: 'Overview', icon: Gauge, exact: true },
+  { href: '/projects', label: 'All Projects', icon: Library },
+  { href: '/backups', label: 'Backups', icon: Archive },
+  { href: '/storage', label: 'Storage', icon: HardDrive },
 ];
 
-interface DashboardTicker {
-  totalProjects: number;
-  projectsNeedingBackup: number;
+function SectionLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-3 pb-1 pt-4">
+      <span className="text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-4">{children}</span>
+      {action}
+    </div>
+  );
 }
 
-export function Sidebar({
-  user,
-  authResolved,
-  onLogout,
-  isLoggingOut,
+function Row({
+  href,
+  icon: Icon,
+  label,
+  active,
+  trailing,
   onNavigate,
-  collapsed = false,
-  onToggleCollapsed,
-}: SidebarProps) {
-  const pathname = usePathname();
-  const [ticker, setTicker] = useState<DashboardTicker | null>(null);
-
-  useEffect(() => {
-    fetch('/api/dashboard')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setTicker(d))
-      .catch(() => {});
-  }, []);
-
-  const initials = user?.name
-    ? user.name
-        .split(/\s+/)
-        .map((p) => p[0])
-        .filter(Boolean)
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
-    : user?.email?.[0]?.toUpperCase();
-
+  iconColor,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  trailing?: React.ReactNode;
+  onNavigate?: () => void;
+  iconColor?: string;
+}) {
   return (
-    <aside
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
       className={cn(
-        'codeshelf-sidebar fixed left-0 top-0 h-screen bg-[#15151b]/90 backdrop-blur-2xl saturate-150 border-r border-white/[0.1] flex flex-col z-30 transition-[width] duration-200',
-        collapsed ? 'w-[76px]' : 'w-72'
+        'group flex h-[34px] items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5',
+        'text-[14.5px] transition-colors duration-150',
+        active
+          ? 'bg-accent-tint font-medium text-accent-ink'
+          : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
       )}
     >
-      {/* Logo */}
-      <div className={cn('pt-6 pb-5', collapsed ? 'px-3' : 'px-6')}>
-        <div className="flex items-center gap-3">
-          <Link href="/" onClick={onNavigate} className="shrink-0" title="Dashboard">
-            <div className="w-10 h-10 rounded-[12px] bg-white/[0.08] border border-white/10 flex items-center justify-center hover:bg-white/[0.12] transition-colors">
-              <FolderGit2 className="w-5 h-5 text-[#2997ff]" />
-            </div>
-          </Link>
-          {!collapsed && (
-            <div className="flex flex-col leading-tight min-w-0 animate-fade">
-              <span className="text-[16px] font-semibold tracking-tight truncate">CodeShelf</span>
-              <span className="text-[11.5px] text-[#9a9aa3] truncate">Project Library</span>
-            </div>
-          )}
-          {!collapsed && (
-            <button
-              onClick={onToggleCollapsed}
-              title="Collapse sidebar"
-              className="ml-auto w-8 h-8 rounded-[9px] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors shrink-0"
-            >
-              <PanelLeftClose className="w-[17px] h-[17px]" />
-            </button>
-          )}
-        </div>
+      <Icon
+        className="h-[15px] w-[15px] shrink-0"
+        style={iconColor && !active ? { color: iconColor } : undefined}
+      />
+      <span className="flex-1 truncate">{label}</span>
+      {trailing}
+    </Link>
+  );
+}
+
+function Count({ value }: { value: number }) {
+  return <span className="shrink-0 text-[12.5px] tabular text-ink-4">{value}</span>;
+}
+
+export function Sidebar({ onLogout, onNavigate }: SidebarProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { user, authResolved, collections, tags, smartCollections, libraryScore, libraryGrade, totalProjects } =
+    useLibrary();
+
+  const activeCollection = searchParams.get('collectionId');
+  const activeTag = searchParams.get('tagId');
+  const activeSmart = searchParams.get('smart');
+  const onProjects = pathname === '/projects';
+  const plainProjects = onProjects && !activeCollection && !activeTag && !activeSmart;
+
+  const initials =
+    user?.name
+      ?.split(/\s+/)
+      .map((part) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || user?.email?.[0]?.toUpperCase();
+
+  return (
+    <aside className="material flex h-full w-[264px] flex-col border-r-[0.5px] border-line">
+      {/* Identity */}
+      <div className="flex h-[52px] shrink-0 items-center gap-2.5 px-4">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 rounded-[var(--radius-sm)] py-1 pr-2"
+        >
+          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-accent">
+            <Library className="h-[13px] w-[13px] text-on-accent" />
+          </span>
+          <span className="text-[15.5px] font-semibold tracking-[-0.015em] text-ink">CodeShelf</span>
+        </Link>
       </div>
 
-      {/* Search / expand button */}
-      <div className={cn('mb-4', collapsed ? 'px-3' : 'px-4')}>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
-            title="Search (⌘K)"
-            className="w-full h-10 rounded-[11px] bg-white/[0.06] border border-white/[0.1] flex items-center justify-center text-[#9a9aa3] hover:bg-white/[0.1] hover:text-white transition-colors"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event('codeshelf:open-palette'))}
-            className="relative group w-full text-left"
-          >
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9aa3] group-hover:text-[#2997ff] transition-colors" />
-              <div className="h-10 pl-10 pr-12 rounded-[11px] bg-white/[0.06] border border-white/[0.1] flex items-center text-[13.5px] text-white/40 group-hover:bg-white/[0.09] group-hover:border-white/[0.16] transition-colors">
-                Search projects
-              </div>
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10.5px] text-[#9a9aa3] border border-white/12 rounded-md px-1.5 py-0.5 font-sans hidden sm:block">
-                ⌘K
-              </kbd>
-            </div>
-          </button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className={cn('flex-1 overflow-y-auto overflow-x-hidden no-scrollbar', collapsed ? 'px-3' : 'px-3')}>
-        {navSections.map((section) => (
-          <div key={section.label} className="mb-5">
-            {!collapsed ? (
-              <div className="px-3 mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-white/35">
-                {section.label}
-              </div>
-            ) : (
-              <div className="mx-3 mb-2 hairline" />
-            )}
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    title={collapsed ? item.label : undefined}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={cn(
-                      'group flex items-center rounded-[11px] text-[13.5px] font-medium transition-all duration-150 relative',
-                      collapsed ? 'justify-center h-10' : 'gap-3 px-3 py-2',
-                      isActive
-                        ? 'text-white bg-white/[0.1]'
-                        : 'text-[#9a9aa3] hover:text-white hover:bg-white/[0.06]'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'w-[17px] h-[17px] shrink-0 transition-colors',
-                        isActive ? 'text-[#2997ff]' : 'text-[#9a9aa3] group-hover:text-white'
-                      )}
-                    />
-                    {!collapsed && <span>{item.label}</span>}
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-r-full bg-[#2997ff]" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-
-        {/* Import CTA */}
-        <div className="pt-1">
-          {collapsed ? (
-            <Link
-              href="/import"
-              onClick={onNavigate}
-              title="Import Project"
-              className="w-full h-10 rounded-[11px] bg-[#0a84ff] hover:bg-[#2997ff] flex items-center justify-center text-white transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </Link>
-          ) : (
-            <Link
-              href="/import"
-              onClick={onNavigate}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-[11px] text-[13.5px] font-semibold text-white bg-[#0a84ff] hover:bg-[#2997ff] transition-colors"
-            >
-              <Plus className="w-4 h-4 shrink-0" />
-              Import Project
-              <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          )}
-        </div>
-      </nav>
-
-      {/* Footer */}
-      <div className={cn('pb-5 pt-3 border-t border-white/[0.08]', collapsed ? 'px-3' : 'px-4')}>
-        {/* Backup health */}
-        {ticker && !collapsed && (
-          <Link
-            href="/backups"
-            onClick={onNavigate}
-            className="block rounded-[12px] bg-white/[0.05] border border-white/[0.09] p-3 mb-2.5 hover:bg-white/[0.075] hover:border-white/[0.15] transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-[9px] bg-[#30d158]/12 flex items-center justify-center shrink-0">
-                <Archive className="w-3.5 h-3.5 text-[#30d158]" />
-              </div>
-              <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-[12px] font-medium text-white/85">
-                  {ticker.projectsNeedingBackup === 0 ? 'Library protected' : `${ticker.projectsNeedingBackup} need backup`}
-                </span>
-                <span className="text-[10.5px] text-[#9a9aa3]">
-                  {ticker.totalProjects} {ticker.totalProjects === 1 ? 'project' : 'projects'} · view backups
-                </span>
-              </div>
-            </div>
-          </Link>
-        )}
-
-        {/* User block */}
-        <div
+      {/* Search opens the palette — the field is a button on purpose, so
+          there is exactly one search surface in the app. */}
+      <div className="px-3 pb-1">
+        <button
+          type="button"
+          onClick={() => openPalette()}
           className={cn(
-            'rounded-[12px] bg-white/[0.05] border border-white/[0.09] flex items-center',
-            collapsed ? 'justify-center p-2' : 'p-2.5 gap-2.5'
+            'group flex h-8 w-full items-center gap-2 rounded-[var(--radius-md)] px-2.5',
+            'border-[0.5px] border-line bg-surface-3/60 text-[14px] text-ink-4',
+            'transition-colors duration-150 hover:border-line-2 hover:text-ink-3'
           )}
         >
-          {authResolved && user ? (
-            <>
-              <div
-                className={cn(
-                  'rounded-full bg-[#2997ff]/15 border border-[#2997ff]/25 flex items-center justify-center text-[11px] font-semibold text-[#2997ff] shrink-0',
-                  collapsed ? 'w-8 h-8' : 'w-8 h-8'
-                )}
-                title={collapsed ? user.email : undefined}
-              >
-                {initials || '?'}
-              </div>
-              {!collapsed && (
-                <>
-                  <div className="flex-1 min-w-0 leading-tight">
-                    <p className="text-[12.5px] font-medium truncate">{user.name || user.email.split('@')[0]}</p>
-                    <p className="text-[10.5px] text-[#9a9aa3] truncate">{user.email}</p>
-                  </div>
-                  <button
-                    onClick={onLogout}
-                    disabled={isLoggingOut}
-                    title="Sign out"
-                    className="w-7 h-7 rounded-[8px] flex items-center justify-center text-white/40 hover:text-[#ff453a] hover:bg-[#ff453a]/10 transition-colors shrink-0 disabled:opacity-50"
-                  >
-                    {isLoggingOut ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
-                  </button>
-                </>
-              )}
-            </>
-          ) : (
-            <div className={cn('animate-pulse-soft rounded-full bg-white/[0.08]', collapsed ? 'w-8 h-8' : 'w-8 h-8')} />
-          )}
+          <Search className="h-[14px] w-[14px]" />
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="text-[12px] text-ink-5">⌘K</kbd>
+        </button>
+      </div>
+
+      <nav className="no-scrollbar flex-1 overflow-y-auto px-3 pb-3">
+        <div className="space-y-0.5 pt-2">
+          {PRIMARY.map((item) => (
+            <Row
+              key={item.href}
+              href={item.href}
+              icon={item.icon}
+              label={item.label}
+              onNavigate={onNavigate}
+              active={
+                item.exact
+                  ? pathname === item.href
+                  : item.href === '/projects'
+                    ? plainProjects
+                    : pathname.startsWith(item.href)
+              }
+              trailing={item.href === '/projects' && totalProjects > 0 ? <Count value={totalProjects} /> : undefined}
+            />
+          ))}
         </div>
 
-        {collapsed && (
-          <button
-            onClick={onToggleCollapsed}
-            title="Expand sidebar"
-            className="w-full h-9 mt-2 rounded-[11px] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors"
+        {/* Smart collections — rules, so the membership stays true. */}
+        <SectionLabel
+          action={
+            <Link
+              href="/collections?new=smart"
+              onClick={onNavigate}
+              title="New Smart Collection"
+              className="rounded-[5px] p-0.5 text-ink-4 transition-colors hover:bg-surface-3 hover:text-ink"
+            >
+              <Plus className="h-[13px] w-[13px]" />
+            </Link>
+          }
+        >
+          Smart
+        </SectionLabel>
+        {smartCollections.length === 0 ? (
+          <Link
+            href="/collections?new=smart"
+            onClick={onNavigate}
+            className="flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-[13.5px] text-ink-4 transition-colors hover:bg-surface-3 hover:text-ink-2"
           >
-            <PanelLeftOpen className="w-[17px] h-[17px]" />
-          </button>
+            <Wand2 className="h-[14px] w-[14px]" />
+            Create your first rule
+          </Link>
+        ) : (
+          <div className="space-y-0.5">
+            {smartCollections.map((smart) => (
+              <Row
+                key={smart.id}
+                href={`/projects?smart=${smart.id}`}
+                icon={Sparkles}
+                label={smart.name}
+                onNavigate={onNavigate}
+                active={activeSmart === smart.id}
+                trailing={<Count value={smart.projectCount} />}
+              />
+            ))}
+          </div>
         )}
+
+        {/* Hand-made collections */}
+        <SectionLabel
+          action={
+            <Link
+              href="/collections?new=collection"
+              onClick={onNavigate}
+              title="New collection"
+              className="rounded-[5px] p-0.5 text-ink-4 transition-colors hover:bg-surface-3 hover:text-ink"
+            >
+              <Plus className="h-[13px] w-[13px]" />
+            </Link>
+          }
+        >
+          Collections
+        </SectionLabel>
+        {collections.length === 0 ? (
+          <Link
+            href="/collections?new=collection"
+            onClick={onNavigate}
+            className="flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-[13.5px] text-ink-4 transition-colors hover:bg-surface-3 hover:text-ink-2"
+          >
+            <FolderClosed className="h-[14px] w-[14px]" />
+            Group related projects
+          </Link>
+        ) : (
+          <div className="space-y-0.5">
+            {collections.slice(0, 8).map((collection) => (
+              <Row
+                key={collection.id}
+                href={`/projects?collectionId=${collection.id}`}
+                icon={FolderClosed}
+                label={collection.name}
+                onNavigate={onNavigate}
+                active={activeCollection === collection.id}
+                trailing={<Count value={collection.projectCount} />}
+              />
+            ))}
+            {collections.length > 8 && (
+              <Link
+                href="/collections"
+                onClick={onNavigate}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13.5px] text-ink-4 hover:text-ink-2"
+              >
+                {collections.length - 8} more
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        )}
+
+        {tags.length > 0 && (
+          <>
+            <SectionLabel>Tags</SectionLabel>
+            <div className="flex flex-wrap gap-1.5 px-2 pt-1">
+              {tags.slice(0, 12).map((tag) => (
+                <Link
+                  key={tag.id}
+                  href={`/projects?tagId=${tag.id}`}
+                  onClick={onNavigate}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[12.5px] transition-colors',
+                    activeTag === tag.id
+                      ? 'bg-accent text-on-accent'
+                      : 'bg-surface-3 text-ink-2 hover:text-ink'
+                  )}
+                >
+                  <Hash className="h-[11px] w-[11px] opacity-60" />
+                  {tag.name}
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </nav>
+
+      {/* Footer: score, import, account */}
+      <div className="shrink-0 space-y-2 border-t-[0.5px] border-line px-3 py-3">
+        {libraryScore !== null && libraryGrade && totalProjects > 0 && (
+          <Link
+            href="/"
+            onClick={onNavigate}
+            className="flex items-center justify-between rounded-[var(--radius-md)] px-2 py-1.5 transition-colors hover:bg-surface-3"
+          >
+            <span className="text-[13.5px] text-ink-3">Shelf Score</span>
+            <ScoreChip score={libraryScore} grade={libraryGrade} />
+          </Link>
+        )}
+
+        <Link
+          href="/import"
+          onClick={onNavigate}
+          className={cn(
+            'flex h-9 items-center justify-center gap-1.5 rounded-[var(--radius-md)]',
+            'bg-accent text-[14.5px] font-medium text-on-accent',
+            'transition-colors duration-150 hover:bg-accent-hover'
+          )}
+        >
+          <Plus className="h-4 w-4" />
+          Import Projects
+        </Link>
+
+        <div className="flex items-center gap-2 pt-1">
+          {authResolved && user ? (
+            <>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-3 text-[12px] font-semibold text-ink-2">
+                {initials || '?'}
+              </span>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block truncate text-[13.5px] font-medium text-ink">
+                  {user.name || user.email.split('@')[0]}
+                </span>
+                <span className="block truncate text-[12px] text-ink-4">{user.email}</span>
+              </span>
+              <Link
+                href="/settings"
+                onClick={onNavigate}
+                title="Settings"
+                className={cn(
+                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] transition-colors',
+                  pathname.startsWith('/settings')
+                    ? 'bg-accent-tint text-accent-ink'
+                    : 'text-ink-4 hover:bg-surface-3 hover:text-ink'
+                )}
+              >
+                <Settings className="h-[15px] w-[15px]" />
+              </Link>
+              <button
+                type="button"
+                onClick={onLogout}
+                title="Sign out"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-ink-4 transition-colors hover:bg-bad-tint hover:text-bad"
+              >
+                <LogOut className="h-[15px] w-[15px]" />
+              </button>
+            </>
+          ) : (
+            <div className="h-7 w-7 animate-breathe rounded-full bg-surface-3" />
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/** Shown while the navigation resolves the current query string. */
+export function SidebarFallback() {
+  return (
+    <aside className="material flex h-full w-[264px] flex-col border-r-[0.5px] border-line">
+      <div className="flex h-[52px] shrink-0 items-center gap-2.5 px-4">
+        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-accent">
+          <Library className="h-[13px] w-[13px] text-on-accent" />
+        </span>
+        <span className="text-[15.5px] font-semibold tracking-[-0.015em] text-ink">CodeShelf</span>
+      </div>
+      <div className="flex-1 space-y-1.5 px-3 pt-3" aria-hidden="true">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="skeleton h-[30px] rounded-[var(--radius-sm)]" />
+        ))}
       </div>
     </aside>
   );

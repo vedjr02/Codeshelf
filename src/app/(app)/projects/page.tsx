@@ -1,384 +1,424 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { ProjectCard } from '@/components/project-card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { EmptyState, LoadingState } from '@/components/ui/states';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useToast } from '@/components/ui/toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Search, Plus, Star, Archive, FolderGit2, Layers, X, Hash, AlertTriangle } from 'lucide-react';
+import * as React from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { LayoutGrid, List, Plus, Search, Sparkles, Star, X } from 'lucide-react';
+import { PageShell } from '@/components/page-shell';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { IconInput } from '@/components/ui/input';
+import { Segmented } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/states';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { ProjectCard } from '@/components/project-card';
+import { ProjectRow, ProjectRowHeader } from '@/components/project-row';
+import { QuickLook } from '@/components/quick-look';
+import { useProjectActions } from '@/components/project-actions';
+import { useLibrary } from '@/components/library-context';
+import { plural, cn } from '@/lib/utils';
+import type { ProjectSummary } from '@/types/client';
 
-interface Project {
-  id: string;
-  name: string;
-  path: string;
-  language?: string | null;
-  framework?: string | null;
-  size: number;
-  lastModified?: string | null;
-  lastOpened?: string | null;
-  isGitRepo?: boolean;
-  gitBranch?: string | null;
-  gitRemote?: string | null;
-  gitStatus?: string | null;
-  isFavorite?: boolean;
-  isArchived?: boolean;
-  tags?: Array<{ id: string; name: string; color: string }>;
-  collections?: Array<{ id: string; name: string }>;
-  backups?: Array<{ id: string; createdAt: string }>;
-}
+type ViewMode = 'grid' | 'list';
+
+/**
+ * Sort options are stored as `key:order` pairs so the control always has an
+ * exact match for its current value — a Select whose value is not in its list
+ * renders blank.
+ */
+const SORTS = [
+  { value: 'lastModified:desc', label: 'Last modified' },
+  { value: 'lastOpened:desc', label: 'Last opened' },
+  { value: 'name:asc', label: 'Name' },
+  { value: 'size:desc', label: 'Largest first' },
+  { value: 'size:asc', label: 'Smallest first' },
+  { value: 'health:asc', label: 'Shelf Score (worst first)' },
+  { value: 'health:desc', label: 'Shelf Score (best first)' },
+];
 
 export default function ProjectsPage() {
   return (
-    <Suspense fallback={<LoadingState message="Loading projects..." />}>
+    <Suspense
+      fallback={
+        <PageShell title="Projects">
+          <SkeletonRows rows={6} />
+        </PageShell>
+      }
+    >
       <ProjectsContent />
     </Suspense>
   );
 }
 
 function ProjectsContent() {
-  const searchParams = useSearchParams();
-  const initialSearch = searchParams.get('search') || '';
-  const initialCollectionId = searchParams.get('collectionId') || '';
-  const initialTagId = searchParams.get('tagId') || '';
+  const router = useRouter();
+  const params = useSearchParams();
+  const { collections, tags, smartCollections } = useLibrary();
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState(initialSearch);
-  const [language, setLanguage] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('lastModified');
-  const [filterFavorite, setFilterFavorite] = useState(false);
-  const [filterArchived, setFilterArchived] = useState(false);
-  const [collectionId, setCollectionId] = useState<string>(initialCollectionId);
-  const [tagId, setTagId] = useState<string>(initialTagId);
-  const [retryCount, setRetryCount] = useState(0);
-  const [collectionName, setCollectionName] = useState<string | null>(null);
-  const [tagName, setTagName] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const { success, error: toastError } = useToast();
+  const collectionId = params.get('collectionId') ?? '';
+  const tagId = params.get('tagId') ?? '';
+  const smartId = params.get('smart') ?? '';
+  const languageParam = params.get('language') ?? '';
 
-  // Debounced fetch: waits for typing to settle before hitting the API
-  useEffect(() => {
-    let cancelled = false;
+  const [projects, setProjects] = React.useState<ProjectSummary[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [reloadKey, setReloadKey] = React.useState(0);
+
+  const [search, setSearch] = React.useState(params.get('search') ?? '');
+  const [language, setLanguage] = React.useState(languageParam || 'all');
+  const [sortBy, setSortBy] = React.useState(params.get('sortBy') ?? 'lastModified');
+  const [sortOrder, setSortOrder] = React.useState(params.get('sortOrder') === 'asc' ? 'asc' : 'desc');
+  const [onlyFavourites, setOnlyFavourites] = React.useState(params.get('isFavorite') === 'true');
+  const [showArchived, setShowArchived] = React.useState(params.get('isArchived') === 'true');
+
+  const [view, setView] = React.useState<ViewMode>('grid');
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [peeked, setPeeked] = React.useState<ProjectSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<ProjectSummary | null>(null);
+
+  /* ---- View preference ---------------------------------------------- */
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const stored = localStorage.getItem('codeshelf:projects-view');
+        if (stored === 'grid' || stored === 'list') setView(stored);
+      } catch {
+        // Falls back to grid.
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const changeView = (next: ViewMode) => {
+    setView(next);
+    try {
+      localStorage.setItem('codeshelf:projects-view', next);
+    } catch {
+      // Preference is best-effort.
+    }
+  };
+
+  /* ---- Load --------------------------------------------------------- */
+  React.useEffect(() => {
+    const signal = { cancelled: false };
     const timer = setTimeout(async () => {
       try {
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (language && language !== 'all') params.set('language', language);
-        if (sortBy) params.set('sortBy', sortBy);
-        if (filterFavorite) params.set('isFavorite', 'true');
-        if (filterArchived) params.set('isArchived', 'true');
-        if (collectionId) params.set('collectionId', collectionId);
-        if (tagId) params.set('tagId', tagId);
+        const query = new URLSearchParams();
+        if (search.trim()) query.set('search', search.trim());
+        if (language !== 'all') query.set('language', language);
+        query.set('sortBy', sortBy);
+        query.set('sortOrder', sortOrder);
+        if (onlyFavourites) query.set('isFavorite', 'true');
+        if (showArchived) query.set('isArchived', 'true');
+        if (collectionId) query.set('collectionId', collectionId);
+        if (tagId) query.set('tagId', tagId);
+        if (smartId) query.set('smart', smartId);
 
-        const res = await fetch(`/api/projects?${params.toString()}`);
-        if (!res.ok) throw new Error('Failed to fetch projects');
-        const data = await res.json();
-        if (!cancelled) {
-          setProjects(data);
-          setError(null);
-        }
+        const res = await fetch(`/api/projects?${query.toString()}`);
+        if (!res.ok) throw new Error('Could not load your projects');
+        const data = (await res.json()) as ProjectSummary[];
+        if (signal.cancelled) return;
+        setProjects(data);
+        setError(null);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load projects');
+        if (!signal.cancelled) setError(err instanceof Error ? err.message : 'Could not load your projects');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!signal.cancelled) setLoading(false);
       }
-    }, 250);
+    }, search ? 220 : 0);
+
     return () => {
-      cancelled = true;
+      signal.cancelled = true;
       clearTimeout(timer);
     };
-  }, [search, language, sortBy, filterFavorite, filterArchived, collectionId, tagId, retryCount]);
+  }, [search, language, sortBy, sortOrder, onlyFavourites, showArchived, collectionId, tagId, smartId, reloadKey]);
 
-  const handleToggleFavorite = async (id: string) => {
-    const project = projects.find((p) => p.id === id);
-    if (!project) return;
+  const actions = useProjectActions({
+    onPatched: (id, patch) =>
+      setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p))),
+    onRemoved: (id) => {
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+      setPeeked((current) => (current?.id === id ? null : current));
+    },
+    onRefreshed: () => setReloadKey((n) => n + 1),
+  });
 
-    try {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isFavorite: !project.isFavorite }),
-      });
+  /* ---- Keyboard navigation over the list ----------------------------- */
+  React.useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (peeked) return;
+      const target = event.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (projects.length === 0) return;
 
-      if (!res.ok) throw new Error('Could not update favorite status');
-      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, isFavorite: !p.isFavorite } : p));
-    } catch (error) {
-      toastError('Could not update favorite', error instanceof Error ? error.message : 'Please try again.');
-    }
-  };
+      const index = projects.findIndex((p) => p.id === selectedId);
 
-  const handleArchive = async (id: string) => {
-    const project = projects.find((p) => p.id === id);
-    if (!project) return;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const next =
+          event.key === 'ArrowDown'
+            ? Math.min(projects.length - 1, index + 1)
+            : Math.max(0, index <= 0 ? 0 : index - 1);
+        setSelectedId(projects[next].id);
+      } else if (event.key === ' ' && index >= 0) {
+        event.preventDefault();
+        setPeeked(projects[index]);
+      } else if (event.key === 'Enter' && index >= 0) {
+        router.push(`/projects/${projects[index].id}`);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [projects, selectedId, peeked, router]);
 
-    try {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isArchived: !project.isArchived }),
-      });
+  // Fall back to the default pair when a URL asks for a combination the
+  // control does not offer.
+  const sortValue = SORTS.some((sort) => sort.value === `${sortBy}:${sortOrder}`)
+    ? `${sortBy}:${sortOrder}`
+    : 'lastModified:desc';
 
-      if (!res.ok) throw new Error('Could not update archive status');
-      setProjects((prev) => prev.map((p) => p.id === id ? { ...p, isArchived: !p.isArchived } : p));
-    } catch (error) {
-      toastError('Could not update project', error instanceof Error ? error.message : 'Please try again.');
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/projects/${deleteTarget.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Could not remove this project');
-      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-      success('Project removed', `${deleteTarget.name} was removed from your library. Files on disk were not changed.`);
-      setDeleteTarget(null);
-    } catch (error) {
-      toastError('Could not remove project', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const languages = Array.from(
-    new Set(projects.map((p) => p.language).filter(Boolean) as string[])
+  const languages = React.useMemo(
+    () => Array.from(new Set(projects.map((p) => p.language).filter(Boolean) as string[])).sort(),
+    [projects]
   );
 
-  // Resolve collection/tag names for the active filter banner
-  useEffect(() => {
-    if (!collectionId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/collections');
-        const cols: Array<{ id: string; name: string }> = res.ok ? await res.json() : [];
-        if (!cancelled) setCollectionName(cols.find((c) => c.id === collectionId)?.name || 'Collection');
-      } catch {
-        if (!cancelled) setCollectionName('Collection');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [collectionId]);
+  /* ---- Context: which view of the library is this? ------------------- */
+  const activeSmart = smartCollections.find((s) => s.id === smartId);
+  const activeCollection = collections.find((c) => c.id === collectionId);
+  const activeTag = tags.find((t) => t.id === tagId);
 
-  useEffect(() => {
-    if (!tagId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/tags');
-        const tags: Array<{ id: string; name: string }> = res.ok ? await res.json() : [];
-        if (!cancelled) setTagName(tags.find((t) => t.id === tagId)?.name || 'Tag');
-      } catch {
-        if (!cancelled) setTagName('Tag');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tagId]);
+  const title = activeSmart?.name ?? activeCollection?.name ?? (activeTag ? `#${activeTag.name}` : 'All Projects');
+  const subtitle = activeSmart
+    ? activeSmart.description
+    : activeCollection?.description ||
+      (showArchived
+        ? 'Projects you have put away. Nothing here is deleted.'
+        : `${plural(projects.length, 'project')} in this view`);
 
-  const hasActiveContextFilters = Boolean(collectionId || tagId);
+  const clearContext = () => router.push('/projects');
+  const hasContext = Boolean(smartId || collectionId || tagId);
+  const hasFilters = Boolean(search.trim()) || language !== 'all' || onlyFavourites;
 
   return (
     <>
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-5 sm:px-10 py-10">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 animate-rise">
-            <div>
-              <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
-                <Layers className="w-4 h-4" />
-                Project Library
-              </span>
-              <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
-                All Projects
-              </h1>
-              <p className="text-[16px] text-[#9a9aa3]">
-                {projects.length} {projects.length === 1 ? 'project' : 'projects'} in your library
-              </p>
-            </div>
-            <Link href="/import">
-              <Button size="lg" className="gap-2 rounded-full px-6">
-                <Plus className="w-[18px] h-[18px]" />
-                Import Project
+      <PageShell
+        title={title}
+        eyebrow={activeSmart ? 'Smart Collection' : activeCollection ? 'Collection' : activeTag ? 'Tag' : undefined}
+        subtitle={subtitle}
+        width="wide"
+        actions={
+          <>
+            {hasContext && (
+              <Button variant="ghost" size="pill" onClick={clearContext}>
+                <X className="h-4 w-4" />
+                Clear
               </Button>
-            </Link>
+            )}
+            <Button asChild variant="primary" size="pill">
+              <Link href="/import">
+                <Plus className="h-4 w-4" />
+                Import
+              </Link>
+            </Button>
+          </>
+        }
+      >
+        {/* ---- Filter bar ---------------------------------------------- */}
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <div className="min-w-[200px] flex-1">
+            <IconInput
+              icon={<Search />}
+              type="search"
+              placeholder="Filter this view…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Filter projects"
+            />
           </div>
 
-          {/* Active collection/tag context banner */}
-          {hasActiveContextFilters && (
-            <div className="flex items-center gap-2.5 mb-5 animate-fade">
-              <span className="text-[13px] text-[#9a9aa3]">Filtered by</span>
-              {collectionId && collectionName && (
-                <button
-                  onClick={() => setCollectionId('')}
-                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#2997ff]/12 border border-[#2997ff]/25 text-[12.5px] font-medium text-[#2997ff] hover:bg-[#2997ff]/20 transition-colors"
-                >
-                  <FolderGit2 className="w-3.5 h-3.5" />
-                  {collectionName}
-                  <X className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
-                </button>
-              )}
-              {tagId && tagName && (
-                <button
-                  onClick={() => setTagId('')}
-                  className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff9f0a]/12 border border-[#ff9f0a]/25 text-[12.5px] font-medium text-[#ff9f0a] hover:bg-[#ff9f0a]/20 transition-colors"
-                >
-                  <Hash className="w-3.5 h-3.5" />
-                  {tagName}
-                  <X className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Filters & Search */}
-          <div className="flex flex-wrap items-center gap-3 mb-8 animate-rise" style={{ animationDelay: '0.05s' }}>
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#9a9aa3]" />
-              <Input
-                type="text"
-                placeholder="Search by name, language, tag..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-[170px]">
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Languages</SelectItem>
-                {languages.map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[170px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lastModified">Last Modified</SelectItem>
-                <SelectItem value="lastOpened">Last Opened</SelectItem>
-                <SelectItem value="name">Name</SelectItem>
-                <SelectItem value="size">Size</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <button
-              onClick={() => setFilterFavorite(!filterFavorite)}
-              aria-pressed={filterFavorite}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
-                filterFavorite
-                  ? 'bg-[#ffd60a]/15 border-[#ffd60a]/30 text-[#ffd60a]'
-                  : 'bg-white/[0.05] border-white/[0.13] text-white/60 hover:text-white hover:border-white/[0.2]'
-              }`}
-            >
-              <Star className="w-4 h-4" />
-              Favorites
-            </button>
-
-            <button
-              onClick={() => setFilterArchived(!filterArchived)}
-              aria-pressed={filterArchived}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-[14px] font-medium border transition-all duration-200 ${
-                filterArchived
-                  ? 'bg-[#0a84ff]/15 border-[#0a84ff]/30 text-[#2997ff]'
-                  : 'bg-white/[0.05] border-white/[0.13] text-white/60 hover:text-white hover:border-white/[0.2]'
-              }`}
-            >
-              <Archive className="w-4 h-4" />
-              Archived
-            </button>
-          </div>
-
-          {/* Projects Grid */}
-          {loading ? (
-            <LoadingState message="Loading projects..." />
-          ) : error ? (
-            <EmptyState
-              icon={<AlertTriangle className="h-8 w-8 text-[#ff453a]" />}
-              title="Failed to load projects"
-              description={error}
-              action={
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setLoading(true);
-                    setRetryCount((n) => n + 1);
-                  }}
-                >
-                  Try again
-                </Button>
-              }
-              className="py-16"
-            />
-          ) : projects.length === 0 ? (
-            <EmptyState
-              icon={<FolderGit2 className="h-8 w-8 text-white/30" />}
-              title="No projects found"
-              description={
-                search || language !== 'all' || filterFavorite || filterArchived
-                  ? 'Try adjusting your filters'
-                  : 'Import your first project to get started'
-              }
-              action={
-                <Link href="/import">
-                  <Button variant="secondary" className="rounded-full">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Import Project
-                  </Button>
-                </Link>
-              }
-              className="py-16"
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onToggleFavorite={handleToggleFavorite}
-                  onArchive={handleArchive}
-                  onDelete={(id) => setDeleteTarget(projects.find((p) => p.id === id) || null)}
-                />
+          <Select value={language} onValueChange={setLanguage}>
+            <SelectTrigger className="w-[152px]" aria-label="Language">
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All languages</SelectItem>
+              {languages.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang}
+                </SelectItem>
               ))}
-            </div>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={sortValue}
+            onValueChange={(value) => {
+              const [key, order] = value.split(':');
+              setSortBy(key);
+              setSortOrder(order);
+            }}
+          >
+            <SelectTrigger className="w-[196px]" aria-label="Sort by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORTS.map((sort) => (
+                <SelectItem key={sort.value} value={sort.value}>
+                  {sort.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant={onlyFavourites ? 'primary' : 'secondary'}
+            size="md"
+            aria-pressed={onlyFavourites}
+            onClick={() => setOnlyFavourites((value) => !value)}
+          >
+            <Star className={cn('h-4 w-4', onlyFavourites && 'fill-current')} />
+            <span className="hidden sm:inline">Favourites</span>
+          </Button>
+
+          <Segmented
+            aria-label="View"
+            value={view}
+            onChange={changeView}
+            options={[
+              { value: 'grid', label: <LayoutGrid className="h-[15px] w-[15px]" />, title: 'Grid' },
+              { value: 'list', label: <List className="h-[15px] w-[15px]" />, title: 'List' },
+            ]}
+          />
+        </div>
+
+        {/* Archived is a mode, not a filter chip — it shows a different set. */}
+        <div className="mb-5 flex items-center gap-3 text-[14px]">
+          <button
+            type="button"
+            onClick={() => setShowArchived((value) => !value)}
+            className="text-ink-3 underline-offset-[3px] transition-colors hover:text-ink hover:underline"
+          >
+            {showArchived ? 'Back to the library' : 'Show archived projects'}
+          </button>
+          {activeSmart && (
+            <Button asChild variant="link" size="xs" className="ml-auto px-0">
+              <Link href="/collections?new=smart">
+                <Sparkles className="h-3.5 w-3.5" />
+                Edit rules
+              </Link>
+            </Button>
           )}
         </div>
-      </div>
+
+        {/* ---- Results ------------------------------------------------- */}
+        {loading ? (
+          <SkeletonRows rows={6} />
+        ) : error ? (
+          <Card className="p-4">
+            <ErrorState message={error} retry={() => setReloadKey((n) => n + 1)} />
+          </Card>
+        ) : projects.length === 0 ? (
+          <Card>
+            <EmptyState
+              title={hasFilters || hasContext ? 'Nothing matches' : 'Your shelf is empty'}
+              description={
+                hasFilters || hasContext
+                  ? 'Loosen a filter, or clear this view to see the whole library.'
+                  : 'Scan a folder and CodeShelf will find the projects inside it.'
+              }
+              action={
+                hasFilters || hasContext ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setSearch('');
+                      setLanguage('all');
+                      setOnlyFavourites(false);
+                      if (hasContext) clearContext();
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : (
+                  <Button asChild variant="primary" size="sm">
+                    <Link href="/import">
+                      <Plus className="h-4 w-4" />
+                      Import projects
+                    </Link>
+                  </Button>
+                )
+              }
+            />
+          </Card>
+        ) : view === 'grid' ? (
+          <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                actions={actions}
+                onRequestDelete={setDeleteTarget}
+                selected={selectedId === project.id}
+                onSelect={(p) => setSelectedId(p.id)}
+                onPeek={setPeeked}
+              />
+            ))}
+          </div>
+        ) : (
+          <Card className="overflow-hidden" elevation="flat">
+            <ProjectRowHeader
+              sortBy={sortBy}
+              onSort={(key) => {
+                if (key === sortBy) {
+                  setSortOrder((order) => (order === 'asc' ? 'desc' : 'asc'));
+                } else {
+                  setSortBy(key);
+                  setSortOrder(key === 'name' ? 'asc' : 'desc');
+                }
+              }}
+            />
+            {projects.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                actions={actions}
+                onRequestDelete={setDeleteTarget}
+                selected={selectedId === project.id}
+                onSelect={(p) => setSelectedId(p.id)}
+                onPeek={setPeeked}
+              />
+            ))}
+          </Card>
+        )}
+
+        {projects.length > 0 && (
+          <p className="mt-5 text-center text-[13.5px] text-ink-4">
+            {plural(projects.length, 'project')} · select one and press{' '}
+            <kbd className="rounded-[5px] border-[0.5px] border-line bg-surface-3 px-1.5 py-0.5 text-[12px]">
+              space
+            </kbd>{' '}
+            to peek
+          </p>
+        )}
+      </PageShell>
+
+      <QuickLook project={peeked} onClose={() => setPeeked(null)} actions={actions} />
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}
-        title={deleteTarget ? `Remove “${deleteTarget.name}”?` : 'Remove project?'}
-        description="This removes the project from CodeShelf only. The project files on disk will not be deleted."
-        confirmLabel="Remove Project"
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={deleteTarget ? `Remove “${deleteTarget.name}” from CodeShelf?` : 'Remove project?'}
+        description="This removes it from your library only."
+        detail="The folder and every file inside it stay exactly where they are on disk. Snapshots you already took are also kept."
+        confirmLabel="Remove"
         destructive
-        loading={isDeleting}
-        onConfirm={handleDelete}
+        onConfirm={async () => {
+          if (deleteTarget) await actions.remove(deleteTarget);
+        }}
       />
     </>
   );

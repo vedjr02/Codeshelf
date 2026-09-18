@@ -1,29 +1,49 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/toast';
+import { ThemeProvider, themeBootstrapScript } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'CodeShelf',
-  description: 'Your personal developer project library & local backup manager',
+  title: {
+    default: 'CodeShelf',
+    template: '%s — CodeShelf',
+  },
+  description: 'Your personal developer project library and local backup manager.',
+  applicationName: 'CodeShelf',
+  // A private index of one machine's folders. Nothing here is for the web.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false },
+  },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en" className="dark">
-      <body className="relative">
-        {/* Ambient background — subtle radial glows, much softer than before */}
-        <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[32rem]"
-            style={{ background: 'radial-gradient(60% 50% at 50% -5%, rgba(41,151,255,0.14), transparent 70%)' }} />
-          <div className="absolute -bottom-64 -left-40 h-[28rem] w-[28rem] rounded-full bg-[#2997ff]/[0.06] blur-[120px]" />
-          <div className="absolute -top-40 -right-40 h-[26rem] w-[26rem] rounded-full bg-white/[0.045] blur-[110px]" />
-        </div>
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f6f6f8' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0b' },
+  ],
+};
 
-        <ToastProvider>{children}</ToastProvider>
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The proxy mints a per-request nonce; the CSP admits no other inline script.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Applies the stored appearance before first paint, so the page
+            never flashes the wrong theme. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
+      <body>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,12 +1,18 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createWriteStream } from 'fs';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 // archiver v8 is ESM-only and exports classes, not a callable factory
 import { ZipArchive } from 'archiver';
 
-const execAsync = promisify(exec);
+/**
+ * execFile, not exec: arguments are passed as argv entries and never through a
+ * shell, so a path containing quotes, `$(...)`, backticks or a semicolon is
+ * just a path. Project names come from folders and package.json on disk, so
+ * they are not ours to trust.
+ */
+const execFileAsync = promisify(execFile);
 
 export interface BackupOptions {
   projectId: string;
@@ -122,8 +128,9 @@ export async function restoreBackup(options: RestoreOptions): Promise<void> {
 
   await fs.mkdir(outputPath, { recursive: true });
 
-  // Use unzip command for extraction
-  await execAsync(`unzip -o "${backupPath}" -d "${outputPath}"`);
+  // -o overwrite, -qq quiet. Info-ZIP itself refuses absolute and `../`
+  // member paths, so an archive cannot escape outputPath.
+  await execFileAsync('unzip', ['-o', '-qq', backupPath, '-d', outputPath]);
 
   if (onProgress) {
     onProgress(100);
@@ -134,8 +141,9 @@ export async function getBackupInfo(backupPath: string): Promise<{ size: number;
   const stats = await fs.stat(backupPath);
 
   // Get file count from zip
-  const { stdout } = await execAsync(`unzip -l "${backupPath}" | tail -1`);
-  const match = stdout.match(/(\d+)\s+files/);
+  const { stdout } = await execFileAsync('unzip', ['-l', backupPath]);
+  const summary = stdout.trimEnd().split('\n').pop() ?? '';
+  const match = summary.match(/(\d+)\s+files/);
   const fileCount = match ? parseInt(match[1], 10) : 0;
 
   return {

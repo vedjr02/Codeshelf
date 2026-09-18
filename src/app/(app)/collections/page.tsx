@@ -1,296 +1,459 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import * as React from 'react';
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { ArrowUpRight, FolderClosed, Hash, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { PageShell, Section } from '@/components/page-shell';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Field, Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { LoadingState, EmptyState } from '@/components/ui/states';
+import { EmptyState, SkeletonRows } from '@/components/ui/states';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { SmartCollectionEditor, type SmartCollectionDraft } from '@/components/smart-collection-editor';
 import { useToast } from '@/components/ui/toast';
-import { FolderKanban, Plus, Folder, Tag, Hash, ArrowUpRight } from 'lucide-react';
-import Link from 'next/link';
-
-interface CollectionItem {
-  id: string;
-  name: string;
-  description?: string | null;
-  color?: string | null;
-  projectCount: number;
-}
-
-interface TagItem {
-  id: string;
-  name: string;
-  color: string;
-  projectCount: number;
-}
+import { notifyLibraryChanged, useLibrary, type SmartCollectionSummary } from '@/components/library-context';
+import { RULE_PRESETS } from '@/lib/smart-rules';
+import { plural } from '@/lib/utils';
 
 export default function CollectionsPage() {
-  const [collections, setCollections] = useState<CollectionItem[]>([]);
-  const [tags, setTags] = useState<TagItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newCollectionName, setNewCollectionName] = useState('');
-  const [newCollectionDesc, setNewCollectionDesc] = useState('');
-  const [newTagName, setNewTagName] = useState('');
-  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
-  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  return (
+    <Suspense
+      fallback={
+        <PageShell title="Collections">
+          <SkeletonRows rows={4} />
+        </PageShell>
+      }
+    >
+      <CollectionsContent />
+    </Suspense>
+  );
+}
+
+function CollectionsContent() {
+  const params = useSearchParams();
+  const { collections, tags, smartCollections, authResolved, refresh } = useLibrary();
   const { success, error: toastError } = useToast();
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [colRes, tagRes] = await Promise.all([
-        fetch('/api/collections'),
-        fetch('/api/tags'),
-      ]);
+  const [smartDraft, setSmartDraft] = React.useState<SmartCollectionDraft | null>(null);
+  const [smartOpen, setSmartOpen] = React.useState(false);
+  const [smartDelete, setSmartDelete] = React.useState<SmartCollectionSummary | null>(null);
 
-      const [colData, tagData] = await Promise.all([
-        colRes.json(),
-        tagRes.json(),
-      ]);
+  const [collectionOpen, setCollectionOpen] = React.useState(false);
+  const [collectionName, setCollectionName] = React.useState('');
+  const [collectionDesc, setCollectionDesc] = React.useState('');
+  const [tagOpen, setTagOpen] = React.useState(false);
+  const [tagName, setTagName] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
 
-      setCollections(colData);
-      setTags(tagData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  /* The sidebar's + buttons deep-link straight into the right sheet. */
+  const requested = params.get('new');
+  React.useEffect(() => {
+    if (!requested) return;
+    const frame = requestAnimationFrame(() => {
+      if (requested === 'smart') {
+        setSmartDraft(null);
+        setSmartOpen(true);
+      } else if (requested === 'collection') {
+        setCollectionOpen(true);
+      } else if (requested === 'tag') {
+        setTagOpen(true);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [requested]);
 
-  useEffect(() => {
-    const id = window.setTimeout(() => { void fetchData(); }, 0);
-    return () => window.clearTimeout(id);
-  }, [fetchData]);
-
-  const handleCreateCollection = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCollectionName.trim()) return;
-
+  const createCollection = async () => {
+    if (!collectionName.trim()) return;
+    setSaving(true);
     try {
       const res = await fetch('/api/collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCollectionName,
-          description: newCollectionDesc,
-        }),
+        body: JSON.stringify({ name: collectionName.trim(), description: collectionDesc.trim() }),
       });
-
-      if (!res.ok) throw new Error('Could not create collection');
-      setNewCollectionName('');
-      setNewCollectionDesc('');
-      setIsCreatingCollection(false);
-      success('Collection created');
-      fetchData();
-    } catch (error) {
-      toastError('Could not create collection', error instanceof Error ? error.message : 'Please try again.');
+      if (!res.ok) throw new Error('Could not create that collection');
+      success('Collection created', collectionName.trim());
+      setCollectionName('');
+      setCollectionDesc('');
+      setCollectionOpen(false);
+      notifyLibraryChanged();
+      await refresh();
+    } catch (err) {
+      toastError('Could not create collection', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleCreateTag = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTagName.trim()) return;
-
+  const createTag = async () => {
+    if (!tagName.trim()) return;
+    setSaving(true);
     try {
       const res = await fetch('/api/tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTagName }),
+        body: JSON.stringify({ name: tagName.trim() }),
       });
-
-      if (!res.ok) throw new Error('Could not create tag');
-      setNewTagName('');
-      setIsCreatingTag(false);
-      success('Tag created');
-      fetchData();
-    } catch (error) {
-      toastError('Could not create tag', error instanceof Error ? error.message : 'Please try again.');
+      if (!res.ok) throw new Error('Could not create that tag');
+      success('Tag created', tagName.trim());
+      setTagName('');
+      setTagOpen(false);
+      notifyLibraryChanged();
+      await refresh();
+    } catch (err) {
+      toastError('Could not create tag', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingState message="Loading collections and tags..." />
-      </div>
-    );
-  }
+  const deleteSmart = async () => {
+    if (!smartDelete) return;
+    try {
+      const res = await fetch(`/api/smart-collections/${smartDelete.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Could not delete that collection');
+      success('Smart Collection deleted', 'No projects were changed.');
+      setSmartDelete(null);
+      notifyLibraryChanged();
+      await refresh();
+    } catch (err) {
+      toastError('Could not delete', err instanceof Error ? err.message : 'Please try again.');
+    }
+  };
+
+  const createPreset = async (preset: (typeof RULE_PRESETS)[number]) => {
+    try {
+      const res = await fetch('/api/smart-collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: preset.name, icon: preset.icon, rules: preset.rules }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || 'Could not add that rule');
+      success('Smart Collection added', preset.name);
+      notifyLibraryChanged();
+      await refresh();
+    } catch (err) {
+      toastError('Could not add it', err instanceof Error ? err.message : 'Please try again.');
+    }
+  };
+
+  const unusedPresets = RULE_PRESETS.filter(
+    (preset) => !smartCollections.some((smart) => smart.name === preset.name)
+  );
 
   return (
-    <div className="min-h-screen">
-      <div className="p-5 sm:p-10 max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-10 animate-rise">
-            <span className="text-[11.5px] font-medium uppercase tracking-[0.1em] text-white/45 mb-3">
-              <FolderKanban className="w-4 h-4" />
-              Organize
-            </span>
-            <h1 className="text-[32px] sm:text-[40px] font-semibold tracking-tight leading-none mb-2">
-              Collections & Tags
-            </h1>
-            <p className="text-[16px] text-[#9a9aa3] mt-1">
-              Group related projects and build custom taxonomies
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
-            {/* Collections Section */}
-            <div className="animate-rise" style={{ animationDelay: '0.05s' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-[10px] bg-[#2997ff]/10 flex items-center justify-center">
-                    <Folder className="w-4 h-4 text-[#2997ff]" />
-                  </div>
-                  Collections
-                </h2>
-
-                <Dialog open={isCreatingCollection} onOpenChange={setIsCreatingCollection}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="secondary" className="rounded-full gap-1">
-                      <Plus className="w-3.5 h-3.5" />
-                      New
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-[#1f1f23] border-white/[0.14]">
-                    <DialogHeader>
-                      <DialogTitle className="text-[18px] tracking-tight">Create Collection</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateCollection} className="space-y-4 mt-4">
-                      <div>
-                        <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Name</label>
-                        <Input
-                          placeholder="e.g. Work, Side Projects, Open Source"
-                          value={newCollectionName}
-                          onChange={(e) => setNewCollectionName(e.target.value)}
-                          className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Description</label>
-                        <Input
-                          placeholder="Optional description"
-                          value={newCollectionDesc}
-                          onChange={(e) => setNewCollectionDesc(e.target.value)}
-                          className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]"
-                        />
-                      </div>
-                      <Button type="submit" className="w-full rounded-[12px] bg-[#0a84ff] text-white">
-                        Create Collection
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {collections.length === 0 ? (
-                <EmptyState
-                  title="No collections yet"
-                  description="Create a collection to group related projects together."
-                  className="py-10"
-                />
+    <>
+      <PageShell
+        title="Organize"
+        subtitle="Collections you file by hand, Smart Collections that file themselves, and tags for everything that cuts across both."
+        actions={
+          <Button
+            variant="primary"
+            size="pill"
+            onClick={() => {
+              setSmartDraft(null);
+              setSmartOpen(true);
+            }}
+          >
+            <Sparkles className="h-4 w-4" />
+            New rule
+          </Button>
+        }
+      >
+        {!authResolved ? (
+          <SkeletonRows rows={4} />
+        ) : (
+          <div className="space-y-10">
+            {/* ---- Smart Collections ---------------------------------- */}
+            <Section
+              title="Smart Collections"
+              description="Rules, evaluated every time you look."
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSmartDraft(null);
+                    setSmartOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  New
+                </Button>
+              }
+            >
+              {smartCollections.length === 0 ? (
+                <Card>
+                  <EmptyState
+                    icon={<Sparkles className="text-violet" />}
+                    title="No rules yet"
+                    description="A Smart Collection answers a question about your library — and keeps answering it as things change."
+                  />
+                </Card>
               ) : (
-                <div className="space-y-2">
-                  {collections.map((col) => (
-                    <Link key={col.id} href={`/projects?collectionId=${col.id}`}>
-                      <div className="group flex items-center justify-between p-4 rounded-xl border border-white/[0.13] bg-white/[0.05] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-200 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-[12px] bg-[#2997ff]/10 flex items-center justify-center shrink-0">
-                            <Folder className="w-[18px] h-[18px] text-[#2997ff]" />
-                          </div>
-                          <div>
-                            <h3 className="text-[13.5px] font-semibold tracking-tight">{col.name}</h3>
-                            {col.description && (
-                              <p className="text-[11.5px] text-white/35 mt-0.5">{col.description}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {smartCollections.map((smart) => (
+                    <Card key={smart.id} interactive className="group p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-violet-tint text-violet">
+                          <Sparkles className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={`/projects?smart=${smart.id}`}
+                            className="block truncate text-[15.5px] font-semibold tracking-[-0.015em] text-ink hover:text-accent-ink"
+                          >
+                            {smart.name}
+                          </Link>
+                          <p className="mt-0.5 line-clamp-2 text-[13.5px] leading-relaxed text-ink-3">
+                            {smart.description}
+                          </p>
+                          <p className="mt-2 text-[13px] tabular text-ink-4">
+                            {plural(smart.projectCount, 'project')}
+                            {smart.sample.length > 0 && (
+                              <span className="text-ink-5"> · {smart.sample.map((s) => s.name).join(', ')}</span>
                             )}
-                          </div>
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-white/40 tabular-nums bg-white/[0.05] px-2 py-0.5 rounded-full">
-                            {col.projectCount} projects
-                          </span>
-                          <ArrowUpRight className="w-4 h-4 text-white/20 group-hover:text-white/50 transition-colors" />
+                        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Edit ${smart.name}`}
+                            onClick={() => {
+                              setSmartDraft({ id: smart.id, name: smart.name, rules: smart.rules });
+                              setSmartOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-[14px] w-[14px]" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Delete ${smart.name}`}
+                            onClick={() => setSmartDelete(smart)}
+                            className="text-ink-4 hover:bg-bad-tint hover:text-bad"
+                          >
+                            <Trash2 className="h-[14px] w-[14px]" />
+                          </Button>
                         </div>
                       </div>
-                    </Link>
+                    </Card>
                   ))}
                 </div>
               )}
-            </div>
 
-            {/* Tags Section */}
-            <div className="animate-rise" style={{ animationDelay: '0.1s' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[20px] font-semibold tracking-tight flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-[10px] bg-[#ff9f0a]/10 flex items-center justify-center">
-                    <Tag className="w-4 h-4 text-[#ff9f0a]" />
+              {unusedPresets.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2.5 text-[13.5px] text-ink-4">Start from a common one:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {unusedPresets.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => void createPreset(preset)}
+                        title={preset.description}
+                        className="inline-flex items-center gap-1.5 rounded-full border-[0.5px] border-line bg-surface px-3 py-1.5 text-[13.5px] text-ink-2 transition-colors hover:border-line-2 hover:text-ink"
+                      >
+                        <Plus className="h-3.5 w-3.5 text-ink-4" />
+                        {preset.name}
+                      </button>
+                    ))}
                   </div>
-                  Tags
-                </h2>
+                </div>
+              )}
+            </Section>
 
-                <Dialog open={isCreatingTag} onOpenChange={setIsCreatingTag}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="secondary" className="rounded-full gap-1">
-                      <Plus className="w-3.5 h-3.5" />
-                      New
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-[#1f1f23] border-white/[0.14]">
-                    <DialogHeader>
-                      <DialogTitle className="text-[18px] tracking-tight">Create Tag</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateTag} className="space-y-4 mt-4">
-                      <div>
-                        <label className="text-[12px] text-white/50 mb-1.5 block font-medium">Name</label>
-                        <Input
-                          placeholder="e.g. backend, mobile, machine-learning"
-                          value={newTagName}
-                          onChange={(e) => setNewTagName(e.target.value)}
-                          className="rounded-xl bg-white/[0.045] border-white/[0.11] text-[13px]"
-                        />
-                      </div>
-                      <Button type="submit" className="w-full rounded-[12px] bg-[#0a84ff] text-white">
-                        Create Tag
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
+            {/* ---- Collections ---------------------------------------- */}
+            <Section
+              title="Collections"
+              description="Grouped by hand, for the sets only you can define."
+              action={
+                <Button variant="secondary" size="sm" onClick={() => setCollectionOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  New
+                </Button>
+              }
+            >
+              {collections.length === 0 ? (
+                <Card>
+                  <EmptyState
+                    icon={<FolderClosed />}
+                    title="No collections yet"
+                    description="Create one, then add projects to it from any project page."
+                  />
+                </Card>
+              ) : (
+                <Card className="overflow-hidden" elevation="flat">
+                  {collections.map((collection) => (
+                    <Link
+                      key={collection.id}
+                      href={`/projects?collectionId=${collection.id}`}
+                      className="group flex items-center gap-3 border-b-[0.5px] border-line px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-3"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-accent-tint text-accent-ink">
+                        <FolderClosed className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-medium text-ink">{collection.name}</span>
+                        {collection.description && (
+                          <span className="block truncate text-[13.5px] text-ink-4">{collection.description}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-[13.5px] tabular text-ink-4">
+                        {plural(collection.projectCount, 'project')}
+                      </span>
+                      <ArrowUpRight className="h-4 w-4 shrink-0 text-ink-5 transition-colors group-hover:text-accent-ink" />
+                    </Link>
+                  ))}
+                </Card>
+              )}
+            </Section>
 
+            {/* ---- Tags ----------------------------------------------- */}
+            <Section
+              title="Tags"
+              description="Cross-cutting labels — a project can carry as many as it needs."
+              action={
+                <Button variant="secondary" size="sm" onClick={() => setTagOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  New
+                </Button>
+              }
+            >
               {tags.length === 0 ? (
-                <EmptyState
-                  title="No tags yet"
-                  description="Tags allow multi-dimensional filtering across your projects."
-                  className="py-10"
-                />
+                <Card>
+                  <EmptyState
+                    icon={<Hash />}
+                    title="No tags yet"
+                    description="Tags are the fastest way to slice the library — client, experiment, teaching, whatever you need."
+                  />
+                </Card>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
-                    <Link key={tag.id} href={`/projects?tagId=${tag.id}`}>
-                      <div
-                        className="group flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.09] text-[13px] font-medium transition-all duration-200 hover:border-white/[0.12]"
-                        style={{
-                          backgroundColor: `${tag.color}0D`,
-                          color: tag.color,
-                        }}
-                      >
-                        <Hash className="w-3.5 h-3.5 opacity-60" />
-                        {tag.name}
-                        <span className="text-[10.5px] opacity-50 tabular-nums">({tag.projectCount})</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
-                      </div>
+                    <Link
+                      key={tag.id}
+                      href={`/projects?tagId=${tag.id}`}
+                      className="group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-medium transition-[background-color,transform] duration-150 hover:-translate-y-px"
+                      style={{
+                        color: tag.color,
+                        backgroundColor: `color-mix(in srgb, ${tag.color} 13%, transparent)`,
+                      }}
+                    >
+                      <Hash className="h-3.5 w-3.5 opacity-70" />
+                      {tag.name}
+                      <span className="tabular opacity-60">{tag.projectCount}</span>
                     </Link>
                   ))}
                 </div>
               )}
-            </div>
+            </Section>
           </div>
-        </div>
-      </div>
+        )}
+      </PageShell>
+
+      <SmartCollectionEditor
+        open={smartOpen}
+        onOpenChange={setSmartOpen}
+        draft={smartDraft}
+        onSaved={() => void refresh()}
+      />
+
+      <ConfirmDialog
+        open={smartDelete !== null}
+        onOpenChange={(open) => !open && setSmartDelete(null)}
+        title={smartDelete ? `Delete “${smartDelete.name}”?` : 'Delete Smart Collection?'}
+        description="Only the rule is deleted."
+        detail="No project is removed, archived or changed in any way."
+        confirmLabel="Delete rule"
+        destructive
+        onConfirm={deleteSmart}
+      />
+
+      {/* New collection */}
+      <Dialog open={collectionOpen} onOpenChange={(open) => !saving && setCollectionOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New collection</DialogTitle>
+            <DialogDescription>A set you curate yourself. Add projects from any project page.</DialogDescription>
+          </DialogHeader>
+          <div className="mt-5 space-y-4">
+            <Field label="Name" htmlFor="collection-name">
+              <Input
+                id="collection-name"
+                value={collectionName}
+                onChange={(event) => setCollectionName(event.target.value)}
+                placeholder="Client work"
+                autoFocus
+                onKeyDown={(event) => event.key === 'Enter' && void createCollection()}
+              />
+            </Field>
+            <Field label="Description" htmlFor="collection-description" hint="Optional.">
+              <Input
+                id="collection-description"
+                value={collectionDesc}
+                onChange={(event) => setCollectionDesc(event.target.value)}
+                placeholder="Anything I invoice for"
+              />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" size="sm" onClick={() => setCollectionOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void createCollection()}
+              disabled={saving || !collectionName.trim()}
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New tag */}
+      <Dialog open={tagOpen} onOpenChange={(open) => !saving && setTagOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New tag</DialogTitle>
+            <DialogDescription>Short, lowercase labels work best.</DialogDescription>
+          </DialogHeader>
+          <div className="mt-5">
+            <Field label="Name" htmlFor="tag-name">
+              <Input
+                id="tag-name"
+                value={tagName}
+                onChange={(event) => setTagName(event.target.value)}
+                placeholder="experiment"
+                autoFocus
+                onKeyDown={(event) => event.key === 'Enter' && void createTag()}
+              />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" size="sm" onClick={() => setTagOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => void createTag()} disabled={saving || !tagName.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
